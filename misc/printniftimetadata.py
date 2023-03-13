@@ -1,5 +1,5 @@
 import sys, os
-import numpy as numpy
+import numpy as np
 import nibabel as nib
 import SimpleITK as sitk
 

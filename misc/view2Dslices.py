@@ -7,7 +7,7 @@ import SimpleITK as sitk
 import matplotlib.pyplot as plt
 import ast
 
-def RandXYZSlices(ct_file, view_indices=None):
+def RandXYZSlices(ct_file, view_indices=None, cutoff_intensity=None):
     patient = dirname(ct_file).split("/")[-1]
     try:
         ct_ds = nib.load(ct_file)
@@ -31,6 +31,13 @@ def RandXYZSlices(ct_file, view_indices=None):
     z_slice = ct_im[z_idx,:,:]
     y_slice = ct_im[:,y_idx,:]
     x_slice = ct_im[:,:,x_idx]
+    if cutoff_intensity != None:
+        x_slice[x_slice < cutoff_intensity[0]] = cutoff_intensity[0]
+        y_slice[y_slice < cutoff_intensity[0]] = cutoff_intensity[0]
+        z_slice[z_slice < cutoff_intensity[0]] = cutoff_intensity[0]
+        x_slice[x_slice > cutoff_intensity[1]] = cutoff_intensity[1]
+        y_slice[y_slice > cutoff_intensity[1]] = cutoff_intensity[1]
+        z_slice[z_slice > cutoff_intensity[1]] = cutoff_intensity[1]
     fig, axs = plt.subplots(1, 3, figsize=(12, 5))
     fig.suptitle(f"{patient} {ct_im.shape[::-1]}")
     axs[0].set_title(f"Sagital view (x={str(x_idx)})")
@@ -57,4 +64,8 @@ if __name__ == "__main__":
         vidx = ast.literal_eval(sys.argv[2])
     except:
         vidx = None
-    RandXYZSlices(ct_path, vidx)
+    try:
+        co = ast.literal_eval(sys.argv[3])
+    except:
+        co = None
+    RandXYZSlices(ct_path, vidx, co)
