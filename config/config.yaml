@@ -1,7 +1,7 @@
 paths: {
-    data_src: "/home/dataset/kaggle/input/train_images/",
-    data_dest: "/home/isaiah/kaggle/mammo/preprocessed/mammodata224_2.h5",
-    metadata_src: "/home/dataset/kaggle/input/train.csv",
+    data_src: "/home/dataset/TotalSegmentor/Totalsegmentator_dataset/",
+    data_dest: "/home/isaiah/TotalSegmentator/preprocessed/",
+    metadata_src: "/home/dataset/TotalSegmentor/meta.csv",
     metadata_dest: "/home/isaiah/kaggle/mammo/preprocessed/metadata_2.json",
     data_ids_dest: "/home/isaiah/kaggle/mammo/preprocessed/train_split_2.json",
     timesheet_dest: "/home/isaiah/kaggle/mammo/preprocessed/train_timesheet.json",
@@ -13,13 +13,11 @@ paths: {
 }
 
 preprocess_params: {
-    file_extension: "h5",
     init_downsample_ratio: 2.5,
+    intensity_range: [-1024, 2048],
     resolution: [224, 224],
     normalization: True,
-    test_set: False,
-    num_samples: null,
-    test_size: 0.25
+    pack_bits: True,
 }
 
 metadata_params: {
