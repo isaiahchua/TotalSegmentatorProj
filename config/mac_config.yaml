@@ -1,6 +1,6 @@
 paths: {
     data_src: "/Users/isaiah/datasets/Totalsegmentator_dataset/",
-    data_dest: "/Users/isaiah/datasets/Totalsegmentator_preprocessed/totalsegmentatordata.h5",
+    data_dest: "/Users/isaiah/datasets/Totalsegmentator_preprocessed/",
     metadata_src: "/Users/isaiah/datasets/Totalsegmentator_dataset/meta.csv",
     data_ids_dest: "/home/isaiah/kaggle/mammo/preprocessed/train_split_2.json",
     timesheet_dest: "/home/isaiah/kaggle/mammo/preprocessed/train_timesheet.json",
@@ -16,6 +16,7 @@ preprocess_params: {
     intensity_range: [-1024, 2048],
     resolution: [224, 224],
     normalization: True,
+    pack_bits: True,
 }
 
 metadata_params: {

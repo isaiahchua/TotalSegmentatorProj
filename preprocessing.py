@@ -110,7 +110,7 @@ class CTPreprocess:
         except:
             ds = sitk.ReadImage(file)
             im = sitk.GetArrayFromImage(ds).T
-        return im.astype(bool)
+        return im.astype(np.uint8)
 
 def run(src, dest, md_file, cfgs):
     # create splits dictionary
@@ -145,7 +145,11 @@ def run(src, dest, md_file, cfgs):
                                compression_opts=9)
             hdf.create_dataset(f"{lbl}/{pat}/gt", data=seg_all, compression="gzip",
                                compression_opts=9)
+            # hdf.create_dataset(f"{lbl}/{pat}/image", data=ct_im)
+            # hdf.create_dataset(f"{lbl}/{pat}/gt", data=seg_all)
             printProgressBarRatio(i, total_no_pats, "Patient")
+            break
+        break
     hdf.close()
 
 
