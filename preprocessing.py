@@ -24,7 +24,7 @@ class ProcessImg:
 class ProcessSeg:
 
     def __init__(self, dirpath, pack_bits=False):
-        self.seg_files = glob.glob(join(dirpath, "*.nii.gz"), recursive=True)
+        self.seg_files = sorted(glob.glob(join(dirpath, "*.nii.gz"), recursive=True))
         self.pack_bits = pack_bits
 
     def OneHotEncode(self):

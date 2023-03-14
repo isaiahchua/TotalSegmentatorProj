@@ -34,7 +34,8 @@ metadata_params: {
 
 dataset_params: {
     augmentations: ["contrast_brightness", "flip", "rotate", "noise"],
-    labels: ["cancer", "laterality", "view", "implant"],
+    labels: [],
+    file_extension: "npz",
 }
 
 optimizer_params: {
