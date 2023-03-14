@@ -17,7 +17,7 @@ from addict import Dict
 import json
 import h5py
 import yaml
-from utils import printProgressBarRatio
+from utils import printProgressBarRatio, PrintTimeStats
 
 # to time script
 import time
@@ -146,8 +146,6 @@ def run(src, dest, md_file, cfgs):
             hdf.create_dataset(f"{lbl}/{pat}/gt", data=seg_all, compression="gzip",
                                compression_opts=9)
             printProgressBarRatio(i, total_no_pats, "Patient")
-            break
-        break
     hdf.close()
 
 
@@ -160,5 +158,8 @@ if __name__ == "__main__":
     cfgs = Dict(yaml.load(open(args.cfgs, "r"), Loader=yaml.Loader))
     paths = cfgs.paths
     prep_cfgs = cfgs.preprocess_params
+    start = time.time()
     run(paths.data_src, paths.data_dest, paths.metadata_src, prep_cfgs)
+    end = time.time()
+    PrintTimeStats(start, end)
     pass
