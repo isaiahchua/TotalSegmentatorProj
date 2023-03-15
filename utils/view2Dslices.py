@@ -7,15 +7,7 @@ import SimpleITK as sitk
 import matplotlib.pyplot as plt
 import ast
 
-def RandXYZSlices(ct_file, view_indices=None, cutoff_intensity=None):
-    patient = dirname(ct_file).split("/")[-1]
-    try:
-        ct_ds = nib.load(ct_file)
-        # transpose image to flip it correct order
-        ct_im = ct_ds.get_fdata().T
-    except:
-        ct_ds = sitk.ReadImage(ct_file)
-        ct_im = sitk.GetArrayFromImage(ct_ds)
+def RandXYZSlices(ct_im, title, view_indices=None, cutoff_intensity=None):
     if view_indices == None:
         # when read as numpy arrays the images are ordered as (z, y, x) instead
         # of (x, y, z)
@@ -39,7 +31,7 @@ def RandXYZSlices(ct_file, view_indices=None, cutoff_intensity=None):
         y_slice[y_slice > cutoff_intensity[1]] = cutoff_intensity[1]
         z_slice[z_slice > cutoff_intensity[1]] = cutoff_intensity[1]
     fig, axs = plt.subplots(1, 3, figsize=(12, 5))
-    fig.suptitle(f"{patient} {ct_im.shape[::-1]}")
+    fig.suptitle(f"{title} {ct_im.shape[::-1]}")
     axs[0].set_title(f"Sagital view (x={str(x_idx)})")
     axs[0].set_xlabel("y")
     axs[0].set_ylabel("z")
@@ -56,6 +48,17 @@ def RandXYZSlices(ct_file, view_indices=None, cutoff_intensity=None):
     plt.tight_layout()
     plt.show()
 
+def run(ct_file, view_indices=None, cutoff_intensity=None):
+    name = dirname(ct_file).split("/")[-1]
+    try:
+        ct_ds = nib.load(ct_file)
+        # transpose image to flip it correct order
+        ct_im = ct_ds.get_fdata().T
+    except:
+        ct_ds = sitk.ReadImage(ct_file)
+        ct_im = sitk.GetArrayFromImage(ct_ds)
+    RandXYZSlices(ct_im, name, view_indices, cutoff_intensity)
+
 if __name__ == "__main__":
     # Input 1: path to ct image
     # Input 2: slice indices to view (x, y, z)
@@ -68,4 +71,4 @@ if __name__ == "__main__":
         co = ast.literal_eval(sys.argv[3])
     except:
         co = None
-    RandXYZSlices(ct_path, vidx, co)
+    run(ct_path, vidx, co)
