@@ -1,4 +1,5 @@
 import sys, os
+from os.path import join
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
@@ -13,11 +14,7 @@ class DataViewer:
 
     def __init__(self, device, dpath, cfgs, batch_size=3):
         self.data = TotalSegmentatorData(device, dpath, cfgs)
-        self.dloader = DataLoader(self.data, batch_size=batch_size)
-
-    def __getitem__(self, i):
-        pat_name, im, gt = iter(self.dloader)[i]
-        return pat_name, im, gt
+        self.dloader = DataLoader(self.data, shuffle=True, batch_size=batch_size)
 
     def __len__(self):
         return len(self.dloader)
@@ -26,13 +23,13 @@ class DataViewer:
         pat_name, im, gt = next(iter(self.dloader))
         return pat_name, im, gt
 
-    def ViewCT(self, i, view_indices=None):
-        pat_name, im, _ = iter(self.dloader)[i]
+    def ViewNextCT(self, view_indices=None):
+        pat_name, im, _ = next(iter(self.dloader))
         RandXYZSlices(im, pat_name, view_indices)
 
-    def ViewSeg(self, i, j, view_indices=None):
-        pat_name, _, gt = iter(self.dloader)[i]
-        RandXYZSlices(gt[j], pat_name, view_indices)
+    def ViewNextSeg(self, i, view_indices=None):
+        pat_name, _, gt = next(iter(self.dloader))
+        RandXYZSlices(gt[i], pat_name, view_indices)
 
 
 if __name__ == "__main__":
@@ -54,8 +51,8 @@ if __name__ == "__main__":
         device = torch.device("mps")
     else:
         device = torch.device('cpu')
-    viewer = DataViewer(device, paths.data_dest.train, data_cfgs)
-    viewer.ViewCT(idx)
+    viewer = DataViewer(device, join(paths.data_dest, "train"), data_cfgs)
+    viewer.ViewNextCT()
 
 
 

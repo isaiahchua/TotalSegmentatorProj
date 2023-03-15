@@ -7,6 +7,16 @@ import torch
 import torchio as tio
 import glob
 from torch.utils.data import Dataset, DataLoader
+import time
+
+def PrintTime(func):
+    def TimeModule(*args, **kwargs):
+        start = time.time()
+        results = func(*args, **kwargs)
+        end = time.time()
+        print(f"time taken: {end - start} s")
+        return results
+    return TimeModule
 
 class TotalSegmentatorData(Dataset):
 
@@ -45,8 +55,9 @@ class TotalSegmentatorData(Dataset):
         # self.GetDataIds()
 
     def __len__(self):
-        return len(self.img_ids)
+        return len(self.datafiles)
 
+    @PrintTime
     def __getitem__(self, i):
         """outputs a list [tuple, torch.tensor, tuple, torch.tensor]"""
         file = self.datafiles[i]
@@ -57,7 +68,7 @@ class TotalSegmentatorData(Dataset):
                 "seg": tio.LabelMap(tensor=gt),
                 })
         pat_aug = self.augment(pat)
-        return pat_name, pat_aug["image"].squeeze(), pat_aug["seg"]
+        return pat_name, pat_aug["image"].data.squeeze(), pat_aug["seg"].data
 
     def _LoadNpz(self, file):
         ds = np.load(file)
@@ -86,6 +97,7 @@ class TotalSegmentatorData(Dataset):
     def _AugInvalid(self):
         prompt = "Invalid augmentation"
         raise Exception(prompt)
+
 
 if __name__ == "__main__":
     # torch.manual_seed(42)
