@@ -57,7 +57,6 @@ class TotalSegmentatorData(Dataset):
     def __len__(self):
         return len(self.datafiles)
 
-    @PrintTime
     def __getitem__(self, i):
         """outputs a list [tuple, torch.tensor, tuple, torch.tensor]"""
         file = self.datafiles[i]
