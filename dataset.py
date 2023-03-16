@@ -71,9 +71,7 @@ class TotalSegmentatorData(Dataset):
 
     def _LoadNpz(self, file):
         ds = np.load(file)
-        im = ds["image"]
-        seg = np.unpackbits(ds["gt"]).reshape((104, *im.shape))
-        return im, seg
+        return ds["image"], ds["gt"]
 
     def _ReadCSV(self):
         self.metadata = pd.read_csv(self.metadata_path)

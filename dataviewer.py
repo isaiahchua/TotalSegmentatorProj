@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import DataLoader
 import yaml
+import json
 from addict import Dict
 import argparse
 from utils import RandXYZSlices
@@ -31,6 +32,8 @@ class DataViewer:
         pat_name, _, gt = next(iter(self.dloader))
         RandXYZSlices(gt[i], pat_name, view_indices)
 
+def IndicesToLabels(indices, label_dict):
+    return [label_dict[str(i)] for i in indices]
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -51,8 +54,18 @@ if __name__ == "__main__":
         device = torch.device("mps")
     else:
         device = torch.device('cpu')
-    viewer = DataViewer(device, join(paths.data_dest, "train"), data_cfgs)
-    viewer.ViewNextCT()
+    viewer = DataViewer(device, join(paths.data_dest, "train"), data_cfgs, batch_size=1)
+
+    label_file = "/home/isaiah/TotalSegmentatorProj/metadata/classes.json"
+    name, inp, gt = viewer.NextBatch()
+    present_lbls = np.unique(gt)
+    with open(label_file, "r") as f:
+        labels = json.load(f)
+    print(f"patient: {name}")
+    print(f"CT Image shape, type, dtype: {inp.shape}, {type(inp), {inp.dtype}}")
+    print(f"Segmentation shape, type, dtype: {gt.shape}, {type(inp)}, {gt.dtype}")
+    print(f"Labels Present: {IndicesToLabels(present_lbls, labels)}")
+    # viewer.ViewNextCT()
 
 
 
