@@ -3,6 +3,8 @@ from os.path import join, dirname, abspath
 import glob
 import numpy as np
 import pandas as pd
+import torch
+import torchio as tio
 import nibabel as nib
 import time
 import yaml
@@ -26,6 +28,15 @@ class ProcessSeg:
     def __init__(self, dirpath, pack_bits=False):
         self.seg_files = sorted(glob.glob(join(dirpath, "*.nii.gz"), recursive=True))
         self.pack_bits = pack_bits
+
+    def OrdinalEncode(self):
+        seg_map = tio.LabelMap(self.seg_files).data
+        seg_sum = torch.sum(seg_map, 0)
+        bmask = (seg_sum == 0).unsqueeze(0)
+        omask = (seg_sum > 1).unsqueeze(0)
+        seg_all = torch.concat([bmask, seg_map, omask])
+        res_seg = torch.argmax(seg_all, dim=0)
+        return res_seg.numpy()
 
     def OneHotEncode(self):
         seg_list = []
@@ -82,10 +93,12 @@ def run(src, dest, md_file, cfgs):
             process_ct = ProcessImg(ct_file)
             im = process_ct.MinMaxNorm(lower_lim, upper_lim)
             process_seg = ProcessSeg(seg_dir, pack_bits)
-            seg = process_seg.OneHotEncode()
+            seg = process_seg.OrdinalEncode()
             savepath = join(dest, lbl, pat + ".npz")
             SaveFile(savepath, im, seg)
             printProgressBarRatio(i, total_no_pats, "Patient")
+            break
+        break
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
