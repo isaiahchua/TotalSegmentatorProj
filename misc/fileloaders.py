@@ -21,6 +21,10 @@ def LoadNpz(file):
     seg = np.unpackbits(ds["gt"]).reshape((104, *im.shape))
     return im, seg
 
+def LoadNpz2(file):
+    ds = np.load(file)
+    return ds["image"], ds["gt"]
+
 if __name__ == "__main__":
     seg_dir = "/Users/isaiah/datasets/Totalsegmentator_dataset/s0000/segmentations/"
     file = "/Users/isaiah/datasets/Totalsegmentator_preprocessed/val/s0000.npz"
