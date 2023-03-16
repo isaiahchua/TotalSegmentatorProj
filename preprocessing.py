@@ -29,8 +29,6 @@ class ProcessSeg:
         self.seg_files = sorted(glob.glob(join(dirpath, "*.nii.gz"), recursive=True))
         self.pack_bits = pack_bits
 
-    def _IgnoreExistingFiles(self):
-
     def OrdinalEncode(self):
         seg_map = tio.LabelMap(self.seg_files).data
         seg_sum = torch.sum(seg_map, 0)
