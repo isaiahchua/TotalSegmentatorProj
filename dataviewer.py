@@ -8,12 +8,12 @@ import yaml
 import json
 from addict import Dict
 import argparse
-from utils import RandXYZSlices
+from utils import RandXYZIndices, RandXYZSlices, PlotXYZSlices
 from dataset import TotalSegmentatorData
 
 class DataViewer:
 
-    def __init__(self, device, dpath, cfgs, batch_size=3):
+    def __init__(self, device, dpath, cfgs, batch_size=1):
         self.data = TotalSegmentatorData(device, dpath, cfgs)
         self.dloader = DataLoader(self.data, shuffle=True, batch_size=batch_size)
 
@@ -26,11 +26,20 @@ class DataViewer:
 
     def ViewNextCT(self, view_indices=None):
         pat_name, im, _ = next(iter(self.dloader))
-        RandXYZSlices(im, pat_name, view_indices)
+        cpu_im = im.detach().squeeze().cpu().numpy()
+        PlotXYZSlices(cpu_im, pat_name, view_indices)
 
-    def ViewNextSeg(self, i, view_indices=None):
+    def ViewNextSeg(self, view_indices=None):
         pat_name, _, gt = next(iter(self.dloader))
-        RandXYZSlices(gt[i], pat_name, view_indices)
+        cpu_gt = gt.detach().squeeze().cpu().numpy()
+        PlotXYZSlices(cpu_gt, pat_name, view_indices)
+
+    def ViewNextDataset(self, view_indices=None):
+        pat_name, im, gt = next(iter(self.dloader))
+        cpu_im = im.detach().squeeze().cpu().numpy()
+        cpu_gt = gt.detach().squeeze().cpu().numpy()
+        PlotXYZSlices(cpu_im, pat_name, cpu_gt, view_indices)
+
 
 def IndicesToLabels(indices, label_dict):
     return [label_dict[str(i)] for i in indices]

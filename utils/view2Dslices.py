@@ -7,13 +7,22 @@ import SimpleITK as sitk
 import matplotlib.pyplot as plt
 import ast
 
-def RandXYZSlices(ct_im, title, view_indices=None, cutoff_intensity=None):
+def RandXYZIndices(ct_im):
+    # when read as numpy arrays the images are ordered as (z, y, x) instead
+    # of (x, y, z)
+    z_idx = random.randint(0, ct_im.shape[0])
+    y_idx = random.randint(0, ct_im.shape[1])
+    x_idx = random.randint(0, ct_im.shape[2])
+    return [x_idx, y_idx, z_idx]
+
+def IntensityClip(im, cutoff_intensity):
+    im[im < cutoff_intensity[0]] = cutoff_intensity[0]
+    im[im > cutoff_intensity[1]] = cutoff_intensity[1]
+    return im
+
+def RandXYZSlices(ct_im, view_indices=None, cutoff_intensity=None):
     if view_indices == None:
-        # when read as numpy arrays the images are ordered as (z, y, x) instead
-        # of (x, y, z)
-        z_idx = random.randint(0, ct_im.shape[0])
-        y_idx = random.randint(0, ct_im.shape[1])
-        x_idx = random.randint(0, ct_im.shape[2])
+        x_idx, y_idx, z_idx = RandXYZIndices(ct_im)
     else:
         assert isinstance(view_indices, list)
         assert len(view_indices) == 3
@@ -24,12 +33,20 @@ def RandXYZSlices(ct_im, title, view_indices=None, cutoff_intensity=None):
     y_slice = ct_im[:,y_idx,:]
     x_slice = ct_im[:,:,x_idx]
     if cutoff_intensity != None:
-        x_slice[x_slice < cutoff_intensity[0]] = cutoff_intensity[0]
-        y_slice[y_slice < cutoff_intensity[0]] = cutoff_intensity[0]
-        z_slice[z_slice < cutoff_intensity[0]] = cutoff_intensity[0]
-        x_slice[x_slice > cutoff_intensity[1]] = cutoff_intensity[1]
-        y_slice[y_slice > cutoff_intensity[1]] = cutoff_intensity[1]
-        z_slice[z_slice > cutoff_intensity[1]] = cutoff_intensity[1]
+        x_slice = IntensityClip(x_slice, cutoff_intensity)
+        y_slice = IntensityClip(y_slice, cutoff_intensity)
+        z_slice = IntensityClip(z_slice, cutoff_intensity)
+    return x_slice, y_slice, z_slice
+
+def PlotXYZSlices(ct_im, title, seg_im=[], view_indices=None, cutoff_intensity=None):
+    if view_indices == None:
+        view_indices = RandXYZIndices(ct_im)
+    else:
+        assert isinstance(view_indices, list)
+        assert len(view_indices) == 3
+        # input from user should still be in (x, y, z)
+    x_idx, y_idx, z_idx = view_indices
+    x_slice, y_slice, z_slice = RandXYZSlices(ct_im, view_indices, cutoff_intensity=None)
     fig, axs = plt.subplots(1, 3, figsize=(12, 5))
     fig.suptitle(f"{title} {ct_im.shape[::-1]}")
     axs[0].set_title(f"Sagital view (x={str(x_idx)})")
@@ -45,6 +62,11 @@ def RandXYZSlices(ct_im, title, view_indices=None, cutoff_intensity=None):
     axs[2].set_xlabel("x")
     axs[2].set_ylabel("y")
     axs[2].imshow(z_slice, cmap="bone", origin="lower")
+    if np.asarray(seg_im).size != 0:
+        x_seg, y_seg, z_seg = RandXYZSlices(seg_im, view_indices)
+        axs[0].imshow(x_seg, cmap="rainbow", alpha=0.3)
+        axs[1].imshow(y_seg, cmap="rainbow", alpha=0.3)
+        axs[2].imshow(z_seg, cmap="rainbow", alpha=0.3)
     plt.tight_layout()
     plt.show()
 
