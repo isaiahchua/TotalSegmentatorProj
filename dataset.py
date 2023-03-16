@@ -64,7 +64,7 @@ class TotalSegmentatorData(Dataset):
         im, gt = self._LoadNpz(self.datafiles[i])
         pat = tio.Subject({
                 "image": tio.ScalarImage(tensor=np.expand_dims(im, 0)),
-                "seg": tio.LabelMap(tensor=gt.expand_dims(gt, 0)),
+                "seg": tio.LabelMap(tensor=np.expand_dims(gt, 0)),
                 })
         pat_aug = self.augment(pat)
         return pat_name, pat_aug["image"].data.squeeze(), pat_aug["seg"].data.squeeze()
