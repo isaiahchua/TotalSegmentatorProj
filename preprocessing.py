@@ -1,5 +1,5 @@
 import sys, os
-from os.path import join, dirname, abspath
+from os.path import join, dirname, abspath, exists
 import glob
 import numpy as np
 import pandas as pd
@@ -29,13 +29,13 @@ class ProcessSeg:
         self.seg_files = sorted(glob.glob(join(dirpath, "*.nii.gz"), recursive=True))
         self.pack_bits = pack_bits
 
+    def _IgnoreExistingFiles(self):
+
     def OrdinalEncode(self):
         seg_map = tio.LabelMap(self.seg_files).data
-        print(seg_map.shape)
         seg_sum = torch.sum(seg_map, 0)
         bmask = (seg_sum == 0).unsqueeze(0)
         omask = (seg_sum).unsqueeze(0)
-        print(omask.numpy().any())
         seg_all = torch.concat([bmask, seg_map, omask])
         res_seg = torch.argmax(seg_all, dim=0)
         return res_seg.numpy()
@@ -54,7 +54,7 @@ class ProcessSeg:
 
 class Metadata:
 
-    def __init__(self, metadata_file):
+    def __init__(self, metadata_file, ignore_exist=False):
         self.md = pd.read_csv(metadata_file, sep=";")
 
     def __len__(self):
@@ -76,6 +76,7 @@ def run(src, dest, md_file, cfgs):
     lower_lim = cfgs.intensity_range[0]
     upper_lim = cfgs.intensity_range[1]
     pack_bits = cfgs.pack_bits
+    ignore_exist = cfgs.ignore_existing_files
 
     # create splits dictionary
     meta = Metadata(md_file)
@@ -85,22 +86,23 @@ def run(src, dest, md_file, cfgs):
     # create image and label files
     i = 0
     for lbl, pats in splits.items():
-        os.makedirs(join(dirname(dest), lbl), exist_ok=True)
+        label_path = join(dirname(dest), lbl)
+        os.makedirs(label_path, exist_ok=True)
         for pat in pats:
+            i += 1
+            savepath = join(dest, lbl, pat + ".npz")
+            if ignore_exist and exists(savepath):
+                continue
             if pat == "s0864":
                 continue
-            i += 1
             ct_file = abspath(join(src, pat, "ct.nii.gz"))
             seg_dir = abspath(join(src, pat, "segmentations"))
             process_ct = ProcessImg(ct_file)
             im = process_ct.MinMaxNorm(lower_lim, upper_lim)
             process_seg = ProcessSeg(seg_dir, pack_bits)
             seg = process_seg.OrdinalEncode()
-            savepath = join(dest, lbl, pat + ".npz")
             SaveFile(savepath, im, seg)
             printProgressBarRatio(i, total_no_pats, "Patient")
-            break
-        break
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

@@ -1,6 +1,6 @@
 paths: {
     data_src: "/home/dataset/TotalSegmentor/Totalsegmentator_dataset/",
-    data_dest: "/home/isaiah/TotalSegmentator/preprocessed/",
+    data_dest: "/home/isaiah/TotalSegmentator/preprocessed2/",
     metadata_src: "/home/dataset/TotalSegmentor/meta.csv",
     metadata_dest: "/home/isaiah/kaggle/mammo/preprocessed/metadata_2.json",
     data_ids_dest: "/home/isaiah/kaggle/mammo/preprocessed/train_split_2.json",
@@ -13,6 +13,7 @@ paths: {
 }
 
 preprocess_params: {
+    ignore_existing_files: True,
     init_downsample_ratio: 2.5,
     intensity_range: [-1024, 2048],
     resolution: [224, 224],
