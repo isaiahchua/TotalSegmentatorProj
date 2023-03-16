@@ -31,9 +31,11 @@ class ProcessSeg:
 
     def OrdinalEncode(self):
         seg_map = tio.LabelMap(self.seg_files).data
+        print(seg_map.shape)
         seg_sum = torch.sum(seg_map, 0)
         bmask = (seg_sum == 0).unsqueeze(0)
-        omask = (seg_sum > 1).unsqueeze(0)
+        omask = (seg_sum).unsqueeze(0)
+        print(omask.numpy().any())
         seg_all = torch.concat([bmask, seg_map, omask])
         res_seg = torch.argmax(seg_all, dim=0)
         return res_seg.numpy()
