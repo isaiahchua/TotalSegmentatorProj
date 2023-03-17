@@ -52,7 +52,7 @@ run_params: {
     optimizer: "adamw",
     scheduler: "cyclic",
     disable_cuda: False,
-    epochs: 20,
+    epochs: 2,
     batch_size: 5,
     validation_size: 5,
     tracking_frequency: 1,
