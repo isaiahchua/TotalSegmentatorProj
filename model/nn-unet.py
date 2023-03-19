@@ -128,6 +128,15 @@ class nnUnet(nn.Module):
             out_chn = nc/4,
             num_classes=self.num_classes
         ))
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv3d):
+                nn.init.kaiming_normal_(m.weight)
+            elif isinstance(m, nn.ConvTranspose3d):
+                nn.init.kaiming_normal(m.weight)
+            elif isinstance(m, nn.InstanceNorm3d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
         return
 
     def forward(self, x):
