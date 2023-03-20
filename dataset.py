@@ -32,6 +32,7 @@ class TotalSegmentatorData(Dataset):
         self.scaling = cfgs.scaling_factors
         self.rotation = cfgs.rotation_angles
         self.gamma = cfgs.gamma_range
+        self.shrink_f = cfgs.model_shrinking_factor
         self.aug_map = defaultdict(self._AugInvalid,
             {
                 "affine": tio.RandomAffine(scales=self.scaling,
@@ -67,7 +68,9 @@ class TotalSegmentatorData(Dataset):
                 "seg": tio.LabelMap(tensor=np.expand_dims(gt, 0)),
                 })
         pat_aug = self.augment(pat)
-        return pat_name, pat_aug["image"].data.squeeze(), pat_aug["seg"].data.squeeze()
+        padding = tio.EnsureShapeMultiple(self.shrink_f, method="pad")
+        pat_pad = padding(pat_aug)
+        return pat_name, pat_pad["image"].data.squeeze(), pat_pad["seg"].data.squeeze()
 
     def _LoadNpz(self, file):
         ds = np.load(file)

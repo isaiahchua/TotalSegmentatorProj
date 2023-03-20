@@ -1,5 +1,5 @@
 import os, sys
-from os.path import isdir, abspath, dirname
+from os.path import join, isdir, abspath, dirname
 from collections import defaultdict
 import numpy as np
 import json
@@ -18,7 +18,7 @@ import torch.multiprocessing as mp
 import timm
 from model import nnUnet
 from dataset import TotalSegmentatorData
-from metrics import DiceMax
+from metrics import DiceWin, DiceMax
 from utils import OneHot
 
 # ViT transfer learning model? Inception net model?
@@ -35,6 +35,7 @@ class Train:
 
     def __init__(self, cfgs):
         assert torch.cuda.is_available()
+        self.device = torch.device("cuda")
         self.no_gpus = torch.cuda.device_count()
 
         self.paths = cfgs.paths
@@ -56,8 +57,9 @@ class Train:
         self.train_report_path = abspath(self.paths.train_report_path)
         self.eval_report_path = abspath(self.paths.eval_report_path)
         self.data_path = abspath(self.paths.data_dest)
+        self.train_data_path = join(self.data_path, "train")
+        self.val_data_path = join(self.data_path, "val")
 
-        self.device = "cuda"
 
         self.train = self.train_cfgs.train
         self.epochs = self.train_cfgs.epochs
@@ -72,7 +74,7 @@ class Train:
         self.loss_weights = self.train_cfgs.loss_weights
         self.num_classes = self.train_cfgs.num_classes
 
-        self.model_dict = defaultdict(self._DefModel, {
+        self.model_dict = defaultdict(self._NoModelError, {
             "nnunet": nnUnet,
         })
         self.optim_dict = defaultdict(AdamW, {
@@ -93,8 +95,8 @@ class Train:
 
         self.e = 1e-6
 
-    def _DefModel(self):
-        return timm.create_model
+    def _NoModelError(self):
+        raise Exception("Not a valid model")
 
 
     def _CheckMakeDirs(self, filepath):
@@ -125,7 +127,7 @@ class Train:
         self.trainloader = DataLoader(self.train_data, self.batch_size, sampler=self.train_sampler)
         self.validloader = DataLoader(self.val_data, self.val_size, sampler=self.val_sampler)
         self.total_val_size = self.val_sampler.num_samples
-        model = self.model_dict[self.model_name](self.model_name, **self.model_cfgs).to(gpu_id)
+        model = self.model_dict[self.model_name](**self.model_cfgs).to(gpu_id)
         if self.model_state != None:
             model.load_state_dict(self.model_state)
             print(f"gpu_id: {gpu_id} - model loaded.")
@@ -172,10 +174,12 @@ class Train:
                     last_lr = self.scheduler.get_last_lr()[0]
                     self.optimizer.zero_grad()
                     p = self.model(inp)
-                    gt_oh = OneHot(gt, self.num_classes)
-                    # criterion = F.cross_entropy(p, gt, weight=label_weights)
-                    dice = DiceMax(F.softmax(p), gt_oh[:self.num_classes - 1])
-                    loss = F.cross_entropy(p, gt[:self.num_classes - 1]) + dice
+                    # remove overlap class
+                    gt[gt == self.num_classes - 1] = 0
+                    gt_oh = OneHot(gt, self.num_classes - 1)
+                    dice = DiceWin(F.softmax(p), gt_oh)
+                    ce = F.cross_entropy(p, gt)
+                    loss = ce + dice
                     loss.backward()
                     dice_scores.append(dice.detach().cpu().item())
                     losses.append(loss.detach().cpu().item())
@@ -200,7 +204,7 @@ class Train:
             scores = []
             for vbatch, (vpat_id, vi, vt) in enumerate(self.validloader):
                 samples.append(vpat_id.detach())
-                scores.append(DiceMax(F.softmax(self.model(vi)), OneHot(vt, self.num_classes)[:self.num_classes - 1]))
+                scores.append(DiceMax(F.softmax(self.model(vi)), OneHot(vt, self.num_classes)))
             samples = torch.cat(samples)
             scores = torch.cat(scores)
             sam_gather = [torch.zeros((self.total_val_size, 1),
