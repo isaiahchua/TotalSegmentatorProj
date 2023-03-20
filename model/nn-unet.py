@@ -88,8 +88,9 @@ class OutConv(nn.Module):
 
 class nnUnet(nn.Module):
 
-    def __init__(self, init_chn: int, next_chn: int, num_blocks, num_classes):
+    def __init__(self, model_name, init_chn: int, next_chn: int, num_blocks, num_classes):
         super().__init__()
+        self.model_name = model_name
         self.init_chn = init_chn
         self.next_chn = next_chn
         self.num_blocks = num_blocks
