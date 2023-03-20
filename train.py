@@ -16,6 +16,7 @@ from torch.optim.lr_scheduler import ExponentialLR, CyclicLR
 from torch.distributed import init_process_group, destroy_process_group
 import torch.multiprocessing as mp
 import timm
+from model import nnUnet
 from dataset import TotalSegmentatorData
 from metrics import DiceMax
 from utils import OneHot
@@ -71,7 +72,9 @@ class Train:
         self.loss_weights = self.train_cfgs.loss_weights
         self.num_classes = self.train_cfgs.num_classes
 
-        self.model_dict = defaultdict(self._DefModel, {})
+        self.model_dict = defaultdict(self._DefModel, {
+            "nnunet": nnUnet,
+        })
         self.optim_dict = defaultdict(AdamW, {
             "adam": Adam,
             "adamw": AdamW,
@@ -171,8 +174,8 @@ class Train:
                     p = self.model(inp)
                     gt_oh = OneHot(gt, self.num_classes)
                     # criterion = F.cross_entropy(p, gt, weight=label_weights)
-                    dice = DiceMax(F.softmax(p), gt_oh)
-                    loss = F.cross_entropy(p, gt) + dice
+                    dice = DiceMax(F.softmax(p), gt_oh[:self.num_classes - 1])
+                    loss = F.cross_entropy(p, gt[:self.num_classes - 1]) + dice
                     loss.backward()
                     dice_scores.append(dice.detach().cpu().item())
                     losses.append(loss.detach().cpu().item())
@@ -197,7 +200,7 @@ class Train:
             scores = []
             for vbatch, (vpat_id, vi, vt) in enumerate(self.validloader):
                 samples.append(vpat_id.detach())
-                scores.append(DiceMax(F.softmax(self.model(vi)), OneHot(vt, self.num_classes)))
+                scores.append(DiceMax(F.softmax(self.model(vi)), OneHot(vt, self.num_classes)[:self.num_classes - 1]))
             samples = torch.cat(samples)
             scores = torch.cat(scores)
             sam_gather = [torch.zeros((self.total_val_size, 1),

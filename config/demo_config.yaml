@@ -46,7 +46,7 @@ model_params: {
 }
 
 run_params: {
-    model: "resnet18",
+    model: "nnunet",
     train: True,
     optimizer: "adamw",
     scheduler: "cyclic",
