@@ -8,7 +8,7 @@ import torchio as tio
 import glob
 from torch.utils.data import Dataset, DataLoader
 import time
-from utils import RandomCrop
+from utils import RandomCrop2
 
 def PrintTime(func):
     def TimeModule(*args, **kwargs):
@@ -30,14 +30,13 @@ class TotalSegmentatorData(Dataset):
                                                f"*.{self.fext}")))
 
         self.aug = cfgs.augmentations
-        self.crop_size = cfgs.crop_size
         self.scaling = cfgs.scaling_factors
         self.rotation = cfgs.rotation_angles
         self.gamma = cfgs.gamma_range
         self.shrink_f = cfgs.model_shrinking_factor
         self.aug_map = defaultdict(self._AugInvalid,
             {
-                "crop": RandomCrop(self.crop_size),
+                "crop": tio.Lambda(RandomCrop2),
                 "affine": tio.RandomAffine(scales=self.scaling,
                                            degrees=self.rotation),
                 "deformation": tio.RandomElasticDeformation(),

@@ -178,7 +178,7 @@ class Train:
                     gt[gt == self.num_classes - 1] = 0
                     gt_oh = OneHot(gt, self.num_classes - 1)
                     dice = DiceWin(F.softmax(p), gt_oh)
-                    ce = F.cross_entropy(p, gt)
+                    ce = F.cross_entropy(p, gt.squeeze(1))
                     loss = ce + dice
                     loss.backward()
                     dice_scores.append(dice.detach().cpu().item())

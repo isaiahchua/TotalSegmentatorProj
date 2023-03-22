@@ -6,7 +6,6 @@ import numpy as np
 import torch
 import torchio as tio
 
-
 class RandomCrop:
     """Random cropping on subject."""
 
@@ -33,8 +32,9 @@ class RandomCrop:
         except:
             return subject
 
-def RandomCrop2(im: torch.Tensor, size: tuple):
+def RandomCrop2(im: torch.Tensor):
     """Random cropping on 4D tensor which does not fail on smaller images"""
+    size = (128, 128, 128)
     bbox = np.asarray(size)
     sh = np.array(im.shape[1:])
     mask = sh < bbox

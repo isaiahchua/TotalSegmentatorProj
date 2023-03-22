@@ -15,7 +15,7 @@ import torchio as tio
 from model import nnUnet
 from dataset import TotalSegmentatorData
 from metrics import DiceMax
-from utils import OneHot, RandomCrop
+from utils import OneHot, RandomCrop2
 
 class TestDataset(Dataset):
 
@@ -24,14 +24,13 @@ class TestDataset(Dataset):
         self.data = tensor_list
         self.gts = gt_list
         self.device = device
-        self.crop_size = [128, 128, 128]
         self.scaling = 0.1
         self.rotation = 10.
         self.gamma =[-0.3, 0.3]
         self.shrink_f = 64
         self.aug_map = defaultdict(self._AugInvalid,
             {
-                "crop": RandomCrop(self.crop_size),
+                "crop": tio.Lambda(RandomCrop2),
                 "affine": tio.RandomAffine(scales=self.scaling,
                                            degrees=self.rotation),
                 "deformation": tio.RandomElasticDeformation(),
