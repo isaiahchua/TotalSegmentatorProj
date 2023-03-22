@@ -19,7 +19,8 @@ preprocess_params: {
 }
 
 dataset_params: {
-    augmentations: ["affine", "deformation", "gamma"],
+    augmentations: ["crop", "affine", "deformation", "gamma"],
+    crop_size: [128, 128, 128],
     scaling_factors: 0.1,
     rotation_angles: 10.,
     gamma_range: [-0.3, 0.3],

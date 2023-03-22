@@ -8,6 +8,7 @@ import torchio as tio
 import glob
 from torch.utils.data import Dataset, DataLoader
 import time
+from utils import RandomCrop
 
 def PrintTime(func):
     def TimeModule(*args, **kwargs):
@@ -29,18 +30,21 @@ class TotalSegmentatorData(Dataset):
                                                f"*.{self.fext}")))
 
         self.aug = cfgs.augmentations
+        self.crop_size = cfgs.crop_size
         self.scaling = cfgs.scaling_factors
         self.rotation = cfgs.rotation_angles
         self.gamma = cfgs.gamma_range
         self.shrink_f = cfgs.model_shrinking_factor
         self.aug_map = defaultdict(self._AugInvalid,
             {
+                "crop": RandomCrop(self.crop_size),
                 "affine": tio.RandomAffine(scales=self.scaling,
                                            degrees=self.rotation),
                 "deformation": tio.RandomElasticDeformation(),
                 "gamma": tio.RandomGamma(log_gamma=self.gamma),
                 "noise": tio.OneOf({tio.RandomNoise(std=(0., 0.1)): 0.75,
                                     tio.RandomBlur(std=(0., 1.)): 0.25}),
+                "pad_to_size": tio.EnsureShapeMultiple(self.shrink_f, method="pad"),
             }
         )
         self.aug_list = [self.aug_map[key] for key in self.aug]
@@ -68,9 +72,7 @@ class TotalSegmentatorData(Dataset):
                 "seg": tio.LabelMap(tensor=np.expand_dims(gt, 0)),
                 })
         pat_aug = self.augment(pat)
-        padding = tio.EnsureShapeMultiple(self.shrink_f, method="pad")
-        pat_pad = padding(pat_aug)
-        return pat_name, pat_pad["image"].data.to(self.device), pat_pad["seg"].data.to(self.device)
+        return pat_name, pat_aug["image"].data.to(self.device), pat_aug["seg"].data.to(self.device)
 
     def _LoadNpz(self, file):
         ds = np.load(file)
