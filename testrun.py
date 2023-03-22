@@ -43,8 +43,8 @@ class TestRun:
         self.epochs = 3
 
     def GenerateData(self):
-        self.data = [torch.rand((1, 64, 64, 64), dtype=torch.float32, device=torch.device("cpu")) for _ in range(20)]
-        self.truths = [torch.randint(0, 106, (1, 64, 64, 64), dtype=torch.uint8, device=torch.device("cpu")) for _ in range(20)]
+        self.data = [torch.rand((1, 256, 256, 256), dtype=torch.float32, device=torch.device("cpu")) for _ in range(20)]
+        self.truths = [torch.randint(0, 106, (1, 256, 256, 256), dtype=torch.uint8, device=torch.device("cpu")) for _ in range(20)]
 
     def _SetupDDP(self, rank):
         os.environ["MASTER_ADDR"] = "localhost"

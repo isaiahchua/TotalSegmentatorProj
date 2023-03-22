@@ -70,7 +70,7 @@ class TotalSegmentatorData(Dataset):
         pat_aug = self.augment(pat)
         padding = tio.EnsureShapeMultiple(self.shrink_f, method="pad")
         pat_pad = padding(pat_aug)
-        return pat_name, pat_pad["image"].data.squeeze(), pat_pad["seg"].data.squeeze()
+        return pat_name, pat_pad["image"].data.to(self.device), pat_pad["seg"].data.to(self.device)
 
     def _LoadNpz(self, file):
         ds = np.load(file)
