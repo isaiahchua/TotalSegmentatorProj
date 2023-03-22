@@ -17,7 +17,7 @@ class InConv(nn.Module):
 
     def __init__(self, in_chn, out_chn):
         super().__init__()
-        self.conv1 = nn.Conv3d(in_chn, out_chn, 4, 4)
+        self.conv1 = nn.Conv3d(in_chn, out_chn, 2, 2)
         self.conv2 = nn.Conv3d(out_chn, out_chn, 3, 1, 1)
         self.norm = nn.InstanceNorm3d(out_chn, affine=True)
         self.lrelu = nn.LeakyReLU()
@@ -81,7 +81,7 @@ class OutConv(nn.Module):
 
     def __init__(self, in_chn, num_classes):
         super().__init__()
-        self.deconv = nn.ConvTranspose3d(in_chn, in_chn, 4, 4)
+        self.deconv = nn.ConvTranspose3d(in_chn, in_chn, 2, 2)
         self.norm = nn.InstanceNorm3d(in_chn, affine=True)
         self.lrelu = nn.LeakyReLU()
         self.outconv = nn.Conv3d(in_chn, num_classes, 1, 1)
