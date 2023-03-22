@@ -70,9 +70,16 @@ class TotalSegmentatorData(Dataset):
         pat = tio.Subject({
                 "image": tio.ScalarImage(tensor=np.expand_dims(im, 0)),
                 "seg": tio.LabelMap(tensor=np.expand_dims(gt, 0)),
+                "location": torch.tensor((0, 0, 0, *im.shape), dtype=torch.int64),
                 })
         pat_aug = self.augment(pat)
-        return pat_name, pat_aug["image"].data.to(self.device), pat_aug["seg"].data.to(self.device)
+        output =(
+            pat_name,
+            pat_aug.location.data.to(self.device),
+            pat_aug.image.data.to(self.device),
+            pat_aug.seg.data.to(self.device),
+        )
+        return output
 
     def _LoadNpz(self, file):
         ds = np.load(file)

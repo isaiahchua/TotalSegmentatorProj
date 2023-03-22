@@ -13,7 +13,7 @@ class RandomCrop:
         Args:
             roi_size: cropping size.
         """
-        self.sampler = tio.data.LabelSampler(patch_size=roi_size, label_name="label")
+        self.sampler = tio.data.UniformSampler(patch_size=roi_size)
 
     def __call__(self, subject: tio.Subject) -> tio.Subject:
         """Use patch sampler to crop.
@@ -24,5 +24,8 @@ class RandomCrop:
         Returns:
             cropped subject
         """
-        for patch in self.sampler(subject=subject, num_patches=1):
-            return patch
+        try:
+            for patch in self.sampler(subject=subject, num_patches=1):
+                return patch
+        except:
+            return subject
