@@ -45,7 +45,7 @@ class TestRun:
 
     @staticmethod
     def GenerateRandShapes():
-        num_arr = np.arange(64, 129, 8)
+        num_arr = np.arange(128, 193, 64)
         shape_list = np.random.choice(num_arr, (20, 3), replace=True)
         return shape_list
 
