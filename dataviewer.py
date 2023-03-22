@@ -21,24 +21,24 @@ class DataViewer:
         return len(self.dloader)
 
     def NextBatch(self):
-        pat_name, im, gt = next(iter(self.dloader))
+        pat_name, bbox, im, gt = next(iter(self.dloader))
         return pat_name, im, gt
 
     def ViewNextCT(self, view_indices=None):
-        pat_name, im, _ = next(iter(self.dloader))
+        pat_name, bbox, im, _ = next(iter(self.dloader))
         cpu_im = im.detach().squeeze().cpu().numpy()
-        PlotXYZSlices(cpu_im, pat_name, view_indices)
+        PlotXYZSlices(cpu_im, pat_name, bbox.data.tolist(), view_indices)
 
     def ViewNextSeg(self, view_indices=None):
-        pat_name, _, gt = next(iter(self.dloader))
+        pat_name, bbox, _, gt = next(iter(self.dloader))
         cpu_gt = gt.detach().squeeze().cpu().numpy()
-        PlotXYZSlices(cpu_gt, pat_name, view_indices)
+        PlotXYZSlices(cpu_gt, pat_name, bbox.data.tolist(), view_indices)
 
     def ViewNextDataset(self, view_indices=None):
-        pat_name, im, gt = next(iter(self.dloader))
+        pat_name, bbox, im, gt = next(iter(self.dloader))
         cpu_im = im.detach().squeeze().cpu().numpy()
         cpu_gt = gt.detach().squeeze().cpu().numpy()
-        PlotXYZSlices(cpu_im, pat_name, cpu_gt, view_indices)
+        PlotXYZSlices(cpu_im, pat_name, bbox.data.tolist(), cpu_gt, view_indices)
 
 
 def IndicesToLabels(indices, label_dict):

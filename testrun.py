@@ -1,6 +1,7 @@
 import os
 os.environ['CUDA_DEVICE_ORDER']='PCI_BUS_ID'
 # os.environ['CUDA_VISIBLE_DEVICES']='1'
+from collections import defaultdict
 import numpy as np
 import torch
 import torch.nn as nn
@@ -10,10 +11,11 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.multiprocessing as mp
 from torch.optim import AdamW
 from torch.utils.data import DataLoader, Dataset, DistributedSampler
+import torchio as tio
 from model import nnUnet
 from dataset import TotalSegmentatorData
 from metrics import DiceMax
-from utils import OneHot
+from utils import OneHot, RandomCrop
 
 class TestDataset(Dataset):
 
@@ -22,12 +24,47 @@ class TestDataset(Dataset):
         self.data = tensor_list
         self.gts = gt_list
         self.device = device
+        self.crop_size = [128, 128, 128]
+        self.scaling = 0.1
+        self.rotation = 10.
+        self.gamma =[-0.3, 0.3]
+        self.shrink_f = 64
+        self.aug_map = defaultdict(self._AugInvalid,
+            {
+                "crop": RandomCrop(self.crop_size),
+                "affine": tio.RandomAffine(scales=self.scaling,
+                                           degrees=self.rotation),
+                "deformation": tio.RandomElasticDeformation(),
+                "gamma": tio.RandomGamma(log_gamma=self.gamma),
+                "noise": tio.OneOf({tio.RandomNoise(std=(0., 0.1)): 0.75,
+                                    tio.RandomBlur(std=(0., 1.)): 0.25}),
+                "pad_to_size": tio.EnsureShapeMultiple(self.shrink_f, method="pad"),
+            }
+        )
+        self.aug = ["crop", "affine", "deformation", "gamma", "pad_to_size"]
+        self.aug_list = [self.aug_map[key] for key in self.aug]
+        self.augment = tio.Compose(self.aug_list)
 
     def __getitem__(self, i):
-        return self.data[i].to(self.device), self.gts[i].to(self.device)
+        im, gt = self.data[i], self.gts[i]
+        pat = tio.Subject({
+                "image": tio.ScalarImage(tensor=np.expand_dims(im, 0)),
+                "seg": tio.LabelMap(tensor=np.expand_dims(gt, 0)),
+                "location": torch.tensor((0, 0, 0, *im.shape), dtype=torch.int64),
+                })
+        pat_aug = self.augment(pat)
+        output =(
+            pat_aug.image.data.to(self.device),
+            pat_aug.seg.data.to(self.device),
+        )
+        return output
 
     def __len__(self):
         return len(self.data)
+
+    def _AugInvalid(self):
+        prompt = "Invalid augmentation"
+        raise Exception(prompt)
 
 class TestRun:
 
@@ -45,24 +82,24 @@ class TestRun:
 
     @staticmethod
     def GenerateRandShapes():
-        num_arr = np.arange(128, 193, 64)
+        num_arr = np.arange(60, 300)
         shape_list = np.random.choice(num_arr, (20, 3), replace=True)
-        return shape_list
+        return shape_list.tolist()
 
     def GenerateData(self):
         shapes = self.GenerateRandShapes()
-        self.data = [torch.rand((1, *sh),
+        self.data = [torch.rand(sh,
                                 dtype=torch.float32,
                                 device=torch.device("cpu")) for sh in shapes]
-        self.truths = [torch.randint(0, 106, (1, *sh),
+        self.truths = [torch.randint(0, 106, sh,
                                      dtype=torch.uint8,
                                      device=torch.device("cpu")) for sh in shapes]
 
     def GenerateUniformData(self):
-        self.data = [torch.rand((1, 128, 128, 128),
+        self.data = [torch.rand((128, 128, 128),
                                 dtype=torch.float32,
                                 device=torch.device("cpu")) for _ in range(20)]
-        self.truths = [torch.randint(0, 106, (1, 128, 128, 128),
+        self.truths = [torch.randint(0, 106, (128, 128, 128),
                                      dtype=torch.uint8,
                                      device=torch.device("cpu")) for _ in range(20)]
 
@@ -116,6 +153,13 @@ class TestRun:
                 test_loss.backward()
                 self.test_opt.step()
                 print(f"batch: {batch + 1}, shape: {inp.detach().shape}, dice: {test_loss.detach().item()}")
+        return
+
+    def LoopDataset(self):
+        test_data = TestDataset(self.data, self.truths, self.device)
+        test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
+        for batch, (inp, gt) in enumerate(test_loader):
+            print(f"shapes: {inp.shape}, {gt.shape}")
         return
 
 if __name__ == "__main__":

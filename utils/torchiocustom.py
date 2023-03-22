@@ -1,6 +1,9 @@
 """Module for custom transforms."""
 from typing import Tuple
 
+import random
+import numpy as np
+import torch
 import torchio as tio
 
 
@@ -29,3 +32,17 @@ class RandomCrop:
                 return patch
         except:
             return subject
+
+def RandomCrop2(im: torch.Tensor, size: tuple):
+    """Random cropping on 4D tensor which does not fail on smaller images"""
+    bbox = np.asarray(size)
+    sh = np.array(im.shape[1:])
+    mask = sh < bbox
+    bbox[mask] = sh[mask]
+    a = [random.randint(0, n) for n in sh - bbox]
+    b = a + bbox
+    im = im[:, a[0]:b[0], a[1]:b[1], a[2]:b[2]]
+    return im
+
+
+

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-DEBUG = True
+DEBUG = False
 
 def PrintShape(func):
     def printing(*args, **kwargs):

@@ -161,7 +161,7 @@ class Train:
             eval_writer = csv.writer(eval_log)
             train_writer.writerow(["epoch", "block", "learning_rate",
                                    "loss", "dice_scores"])
-            eval_writer.writerow(["epoch", "samples",
+            eval_writer.writerow(["epoch", "samples", "bboxes"
                                   "dice_scores"])
         for epoch in range(1, self.epochs + 1):
             self.train_sampler.set_epoch(epoch)
@@ -170,7 +170,7 @@ class Train:
 
                 # Training loop
                 self.model.train()
-                for batch, (pat_id, inp, gt) in enumerate(self.trainloader):
+                for batch, (pat_id, bbox, inp, gt) in enumerate(self.trainloader):
                     last_lr = self.scheduler.get_last_lr()[0]
                     self.optimizer.zero_grad()
                     p = self.model(inp)
@@ -201,23 +201,31 @@ class Train:
                 self.scheduler.step()
             self.model.eval()
             samples = []
+            bboxes = []
             scores = []
-            for vbatch, (vpat_id, vi, vt) in enumerate(self.validloader):
+            for vbatch, (vpat_id, vbbox, vi, vt) in enumerate(self.validloader):
                 samples.append(vpat_id.detach())
+                bboxes.append(vbbox.detach())
                 scores.append(DiceMax(F.softmax(self.model(vi)), OneHot(vt, self.num_classes)))
             samples = torch.cat(samples)
+            bboxes = torch.cat(bboxes)
             scores = torch.cat(scores)
+            sam_gather = [torch.zeros((self.total_val_size, 1),
+                                       dtype=torch.int64).to(scores.device) for _ in range(self.no_gpus)]
             sam_gather = [torch.zeros((self.total_val_size, 1),
                                        dtype=torch.int64).to(scores.device) for _ in range(self.no_gpus)]
             scores_gather = [torch.zeros((self.total_val_size, self.num_classes - 1),
                                         dtype=torch.float32).to(scores.device) for _ in range(self.no_gpus)]
             dist.all_gather(sam_gather, samples)
+            dist.all_gather(bbox_gather, bboxes)
             dist.all_gather(scores_gather, scores)
             all_samples = torch.cat(sam_gather)
+            all_bboxes = torch.cat(bbox_gather)
             all_scores = torch.cat(scores_gather)
             if gpu_id == 0:
                 sco = all_scores.mean().cpu()
                 eval_writer.writerow([epoch, all_samples.cpu().tolist(),
+                                      all_bboxes.cpu().tolist(),
                                       all_scores.cpu().tolist()])
                 state = {
                     "model": self.model.module.state_dict(),
