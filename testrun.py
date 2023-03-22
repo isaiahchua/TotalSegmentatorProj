@@ -1,6 +1,7 @@
 import os
 os.environ['CUDA_DEVICE_ORDER']='PCI_BUS_ID'
 # os.environ['CUDA_VISIBLE_DEVICES']='1'
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -42,9 +43,28 @@ class TestRun:
         self.batch_size = 1
         self.epochs = 3
 
+    @staticmethod
+    def GenerateRandShapes():
+        num_arr = np.arange(64, 129, 8)
+        shape_list = np.random.choice(num_arr, (20, 3), replace=True)
+        return shape_list
+
     def GenerateData(self):
-        self.data = [torch.rand((1, 256, 256, 256), dtype=torch.float32, device=torch.device("cpu")) for _ in range(20)]
-        self.truths = [torch.randint(0, 106, (1, 256, 256, 256), dtype=torch.uint8, device=torch.device("cpu")) for _ in range(20)]
+        shapes = self.GenerateRandShapes()
+        self.data = [torch.rand((1, *sh),
+                                dtype=torch.float32,
+                                device=torch.device("cpu")) for sh in shapes]
+        self.truths = [torch.randint(0, 106, (1, *sh),
+                                     dtype=torch.uint8,
+                                     device=torch.device("cpu")) for sh in shapes]
+
+    def GenerateUniformData(self):
+        self.data = [torch.rand((1, 128, 128, 128),
+                                dtype=torch.float32,
+                                device=torch.device("cpu")) for _ in range(20)]
+        self.truths = [torch.randint(0, 106, (1, 128, 128, 128),
+                                     dtype=torch.uint8,
+                                     device=torch.device("cpu")) for _ in range(20)]
 
     def _SetupDDP(self, rank):
         os.environ["MASTER_ADDR"] = "localhost"
