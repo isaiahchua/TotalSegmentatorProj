@@ -19,7 +19,7 @@ import timm
 from model import nnUnet
 from dataset import TotalSegmentatorData
 from metrics import DiceWin, DiceMax
-from utils import OneHot
+from utils import OneHot, TimeFuncDecorator
 
 # ViT transfer learning model? Inception net model?
 
@@ -263,9 +263,11 @@ class Train:
         destroy_process_group()
         return
 
+    @TimeFuncDecorator(True)
     def RunDDP(self):
         mp.spawn(self._TrainModelDDP, nprocs=self.no_gpus)
 
+    @TimeFuncDecorator(True)
     def LoopDataset(self):
         temp_data = TotalSegmentatorData(self.device, self.train_data_path, self.data_cfgs)
         temp_loader = DataLoader(temp_data, batch_size=self.batch_size, shuffle=False)

@@ -1,17 +1,8 @@
 import torch
 import torch.nn as nn
+from utils import PrintShapeDecorator
 
 DEBUG = False
-
-def PrintShape(func):
-    def printing(*args, **kwargs):
-        if DEBUG:
-            out = func(*args, **kwargs)
-            print(out.detach().shape)
-        else:
-            out = func(*args, **kwargs)
-        return out
-    return printing
 
 class InConv(nn.Module):
 
@@ -22,7 +13,7 @@ class InConv(nn.Module):
         self.norm = nn.InstanceNorm3d(out_chn, affine=True)
         self.lrelu = nn.LeakyReLU()
 
-    @PrintShape
+    @PrintShapeDecorator(DEBUG)
     def forward(self, inp):
         out = self.lrelu(self.norm(self.conv1(inp)))
         out = self.lrelu(self.norm(self.conv2(out)))
@@ -38,7 +29,7 @@ class DownsampleBlock(nn.Module):
         self.norm2 = nn.InstanceNorm3d(out_chn, affine=True)
         self.lrelu = nn.LeakyReLU()
 
-    @PrintShape
+    @PrintShapeDecorator(DEBUG)
     def forward(self, inp):
         out = self.lrelu(self.norm1(self.conv1(inp)))
         out = self.lrelu(self.norm2(self.conv2(out)))
@@ -53,7 +44,7 @@ class Bottleneck(nn.Module):
         self.norm = nn.InstanceNorm3d(chn, affine=True)
         self.lrelu = nn.LeakyReLU()
 
-    @PrintShape
+    @PrintShapeDecorator(DEBUG)
     def forward(self, inp):
         out = self.lrelu(self.norm(self.conv1(inp)))
         out = self.lrelu(self.norm(self.conv2(out)))
@@ -70,7 +61,7 @@ class UpsampleBlock(nn.Module):
         self.norm2 = nn.InstanceNorm3d(out_chn, affine=True)
         self.lrelu = nn.LeakyReLU()
 
-    @PrintShape
+    @PrintShapeDecorator(DEBUG)
     def forward(self, inp, skip_features):
         out = self.lrelu(self.norm1(self.deconv(inp)))
         out = self.lrelu(self.norm1(self.conv1(torch.cat([out, skip_features], 1))))
@@ -79,14 +70,14 @@ class UpsampleBlock(nn.Module):
 
 class OutConv(nn.Module):
 
-    def __init__(self, in_chn, num_classes):
+    def __init__(self, in_chn, num_classes, debug):
         super().__init__()
         self.deconv = nn.ConvTranspose3d(in_chn, in_chn, 2, 2)
         self.norm = nn.InstanceNorm3d(in_chn, affine=True)
         self.lrelu = nn.LeakyReLU()
         self.outconv = nn.Conv3d(in_chn, num_classes, 1, 1)
 
-    @PrintShape
+    @PrintShapeDecorator(DEBUG)
     def forward(self, inp):
         out = self.lrelu(self.norm(self.deconv(inp)))
         out = self.outconv(out)
