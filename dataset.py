@@ -64,7 +64,7 @@ class TotalSegmentatorData(Dataset):
     def __getitem__(self, i):
         """outputs a list [tuple, torch.tensor, tuple, torch.tensor]"""
         file = self.datafiles[i]
-        pat_name = basename(file).split(".")[0]
+        pat_name = int(basename(file).split(".")[0][1:])
         im, gt = self._LoadNpz(self.datafiles[i])
         pat = tio.Subject({
                 "image": tio.ScalarImage(tensor=np.expand_dims(im, 0)),
