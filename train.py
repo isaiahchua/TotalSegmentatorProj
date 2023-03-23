@@ -65,6 +65,7 @@ class Train:
         self.track_freq = self.train_cfgs.tracking_frequency
         self.block_size = self.track_freq * self.batch_size
         self.model_name = self.train_cfgs.model
+        self.met_name = self.train_cfgs.metric
         self.sel_optim = self.train_cfgs.optimizer
         self.sel_scheduler = self.train_cfgs.scheduler
         self.label_weights = self.train_cfgs.label_weights
@@ -84,7 +85,6 @@ class Train:
             "cyclic": CyclicLR,
         })
 
-        self.met_name = "PFbeta"
         # self.labels = self.data_cfgs.labels
         # assert len(self.labels) == len(self.label_weights)
         # assert len(self.labels) == self.model_cfgs.num_classes
@@ -160,7 +160,7 @@ class Train:
             eval_writer = csv.writer(eval_log)
             train_writer.writerow(["epoch", "block", "learning_rate",
                                    "loss", "dice_scores"])
-            eval_writer.writerow(["epoch", "samples", "bboxes"
+            eval_writer.writerow(["epoch", "samples", "bboxes",
                                   "dice_scores"])
         for epoch in range(1, self.epochs + 1):
             self.train_sampler.set_epoch(epoch)

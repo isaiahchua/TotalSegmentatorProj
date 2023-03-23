@@ -37,7 +37,7 @@ def main(cfile):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--config", nargs=1, type=str, metavar="PATH",
+    parser.add_argument("-c", "--config", type=str, metavar="PATH",
                         dest="cfile",
                         help=("Configuration file path"))
     args = parser.parse_args()
