@@ -1,6 +1,7 @@
 import os, sys
 from os.path import join, isdir, abspath, dirname
 from collections import defaultdict
+import shutil
 import numpy as np
 import json
 import csv
@@ -99,9 +100,9 @@ class Train:
     def _CheckMakeDirs(self, filepath):
         if not isdir(dirname(filepath)): os.makedirs(dirname(filepath))
 
-    def _RemovePath(self, filepath):
+    def _RemoveDir(self, dirpath):
         try:
-            os.remove(filepath)
+            shutil.rmtree(dirpath)
         except OSError:
             pass
 
@@ -116,6 +117,11 @@ class Train:
         print(f"Checkpoint with {self.met_name} = {value} saved to {self.ckpts_path}.")
 
     def _TrainModelDDP(self, gpu_id):
+        self._RemoveDir(self.train_report_path)
+        self._RemoveDir(self.eval_report_path)
+        os.makedirs(self.train_report_path)
+        os.makedirs(self.eval_report_path)
+
         self._SetupDDP(gpu_id, self.no_gpus)
         device = torch.device("cuda", gpu_id)
         torch.cuda.set_device(device)
@@ -146,22 +152,19 @@ class Train:
 
         # label_weights = torch.tensor(self.label_weights, dtype=torch.float32).to(gpu_id)
         # loss_weights = torch.tensor(self.loss_weights, dtype=torch.float32).to(gpu_id)
+        train_log = open(join(self.train_report_path, f"rank{gpu_id}.csv"), "a")
+        eval_log = open(join(self.eval_report_path, f"rank{gpu_id}.csv"), "a")
+        train_writer = csv.writer(train_log)
+        eval_writer = csv.writer(eval_log)
+        train_writer.writerow(["epoch", "block", "learning_rate",
+                               "loss", "dice_scores"])
+        eval_writer.writerow(["epoch", "samples", "bboxes",
+                              "dice_scores"])
         best_score = 0.
         sco = 0.
         block = 1
         dice_scores = []
         losses = []
-        if gpu_id == 0:
-            self._RemovePath(self.train_report_path)
-            self._RemovePath(self.eval_report_path)
-            train_log = open(self.train_report_path, "a")
-            eval_log = open(self.eval_report_path, "a")
-            train_writer = csv.writer(train_log)
-            eval_writer = csv.writer(eval_log)
-            train_writer.writerow(["epoch", "block", "learning_rate",
-                                   "loss", "dice_scores"])
-            eval_writer.writerow(["epoch", "samples", "bboxes",
-                                  "dice_scores"])
         for epoch in range(1, self.epochs + 1):
             self.train_sampler.set_epoch(epoch)
             self.val_sampler.set_epoch(epoch)
@@ -185,14 +188,15 @@ class Train:
                     self.optimizer.step()
                     if self.sel_scheduler == "cyclic":
                         self.scheduler.step()
-                    if (gpu_id == 0) and ((batch + 1) % self.track_freq == 0):
+                    if (batch + 1) % self.track_freq == 0:
                         block_loss = np.asarray(losses).mean()
                         block_dice = np.asarray(dice_scores).mean()
                         train_writer.writerow([epoch, block, last_lr, block_loss,
                                                block_dice])
-                        print((f"epoch {epoch}/{self.epochs} | block: {block}, block_size: {self.block_size} | "
-                               f"loss: {block_loss:.5f}, dice: {block_dice:.3f}, "
-                               f"{self.met_name}: {sco:.3f}, best: {best_score:.3f}"))
+                        if gpu_id == 0:
+                            print((f"epoch {epoch}/{self.epochs} | block: {block}, block_size: {self.block_size} | "
+                                   f"loss: {block_loss:.5f}, dice: {block_dice:.3f}, "
+                                   f"{self.met_name}: {sco:.3f}, best: {best_score:.3f}"))
                         block += 1
 
             # Validation loop;  every epoch
@@ -203,29 +207,13 @@ class Train:
             bboxes = []
             scores = []
             for vbatch, (vpat_id, vbbox, vi, vt) in enumerate(self.validloader):
-                samples.append(vpat_id.detach())
-                bboxes.append(vbbox.detach())
-                scores.append(DiceMax(F.softmax(self.model(vi), 1), OneHot(vt, self.num_classes - 1).detach()))
-            bboxes = torch.cat(bboxes)
-            scores = torch.tensor(scores, device=device)
-            samples = torch.tensor(samples, device=device)
-            bbox_gather = [torch.zeros((self.total_val_size, 6),
-                                       dtype=torch.int64, device=device) for _ in range(self.no_gpus)]
-            scores_gather = [torch.zeros((self.total_val_size, 1),
-                                        dtype=torch.float32, device=device) for _ in range(self.no_gpus)]
-            sam_gather = [torch.zeros((self.total_val_size, 1),
-                                       dtype=torch.int64, device=device) for _ in range(self.no_gpus)]
-            dist.all_gather(sam_gather, samples)
-            dist.all_gather(bbox_gather, bboxes)
-            dist.all_gather(scores_gather, scores)
-            all_samples = torch.cat(sam_gather)
-            all_bboxes = torch.cat(bbox_gather)
-            all_scores = torch.cat(scores_gather)
+                samples.append(vpat_id.detach().item())
+                bboxes.append(vbbox.detach().tolist())
+                scores.append(DiceMax(F.softmax(self.model(vi), 1),
+                                      OneHot(vt, self.num_classes - 1)).detach().item())
+            eval_writer.writerow([epoch, samples, bboxes, scores])
             if gpu_id == 0:
-                sco = all_scores.mean().cpu()
-                eval_writer.writerow([epoch, all_samples.cpu().tolist(),
-                                      all_bboxes.cpu().tolist(),
-                                      all_scores.cpu().tolist()])
+                sco = np.asarray(scores).mean()
                 state = {
                     "model": self.model.module.state_dict(),
                     "optimizer": self.optimizer.state_dict()
@@ -234,9 +222,8 @@ class Train:
                 if sco > best_score:
                     best_score = sco
                     self._SaveBestModel(state, best_score)
-        if gpu_id == 0:
-            train_log.close()
-            eval_log.close()
+        train_log.close()
+        eval_log.close()
         self._ShutdownDDP()
         return
 
