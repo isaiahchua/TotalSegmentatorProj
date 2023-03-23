@@ -5,13 +5,15 @@ from addict import Dict
 import yaml
 from testrun import TestRun
 
-cfile = "/home/isaiah/TotalSegmentatorProj/config/demo_config.yaml"
-cfgs = Dict(yaml.load(open(cfile, "r"), Loader=yaml.Loader))
+if __name__ == "__main__":
 
-ddp_test = TestRun(cfgs)
-ddp_test.GenerateData()
+    cfile = "/home/isaiah/TotalSegmentatorProj/config/demo_config.yaml"
+    cfgs = Dict(yaml.load(open(cfile, "r"), Loader=yaml.Loader))
 
-for i, (inp, gt) in enumerate(zip(ddp_test.data, ddp_test.truths)):
-    print(f"Pair {i+1}: {inp.shape}, {gt.shape}")
+    ddp_test = TestRun(cfgs)
+    ddp_test.GenerateData()
 
-ddp_test.RunDDP()
+    for i, (inp, gt) in enumerate(zip(ddp_test.data, ddp_test.truths)):
+        print(f"Pair {i+1}: {inp.shape}, {gt.shape}")
+
+    ddp_test.Run()

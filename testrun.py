@@ -15,7 +15,7 @@ import torchio as tio
 from model import nnUnet
 from dataset import TotalSegmentatorData
 from metrics import DiceMax
-from utils import OneHot, RandomCrop2
+from utils import OneHot, RandomCrop2, TimeFuncDecorator
 
 class TestDataset(Dataset):
 
@@ -134,10 +134,12 @@ class TestRun:
                     print(f"batch: {batch + 1}, shape: {inp.detach().shape}, dice: {test_loss.detach().item()}")
         self._ShutdownDDP()
 
+    @TimeFuncDecorator(True)
     def RunDDP(self):
         mp.spawn(self._TrainDDP, nprocs=self.world_size)
         return
 
+    @TimeFuncDecorator(True)
     def Run(self):
         device = torch.device("cuda:0")
         test_data = TestDataset(self.data, self.truths, device)
@@ -156,6 +158,7 @@ class TestRun:
                 print(f"batch: {batch + 1}, shape: {inp.detach().shape}, dice: {test_loss.detach().item()}")
         return
 
+    @TimeFuncDecorator(True)
     def LoopDataset(self):
         test_data = TestDataset(self.data, self.truths, device)
         test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
