@@ -21,8 +21,6 @@ from dataset import TotalSegmentatorData
 from metrics import DiceWin, DiceMax
 from utils import OneHot, TimeFuncDecorator
 
-# ViT transfer learning model? Inception net model?
-
 class NullScheduler:
 
     def __init__(self, lr):
@@ -119,14 +117,16 @@ class Train:
 
     def _TrainModelDDP(self, gpu_id):
         self._SetupDDP(gpu_id, self.no_gpus)
-        self.train_data = TotalSegmentatorData(gpu_id, self.train_data_path, self.data_cfgs)
-        self.val_data = TotalSegmentatorData(gpu_id, self.val_data_path, self.data_cfgs)
+        device = torch.device("cuda", gpu_id)
+        torch.cuda.set_device(device)
+        self.train_data = TotalSegmentatorData(device, self.train_data_path, self.data_cfgs)
+        self.val_data = TotalSegmentatorData(device, self.val_data_path, self.data_cfgs)
         self.train_sampler = DistributedSampler(self.train_data, shuffle=True)
         self.val_sampler = DistributedSampler(self.val_data, shuffle=True)
         self.trainloader = DataLoader(self.train_data, self.batch_size, sampler=self.train_sampler)
         self.validloader = DataLoader(self.val_data, self.val_size, sampler=self.val_sampler)
-        self.total_val_size = self.val_sampler.num_samples
-        model = self.model_dict[self.model_name](**self.model_cfgs).to(gpu_id)
+        self.total_val_size = len(self.val_sampler)
+        model = self.model_dict[self.model_name](**self.model_cfgs).to(device)
         if self.model_state != None:
             model.load_state_dict(self.model_state)
             print(f"gpu_id: {gpu_id} - model loaded.")
@@ -203,16 +203,15 @@ class Train:
             bboxes = []
             scores = []
             for vbatch, (vpat_id, vbbox, vi, vt) in enumerate(self.validloader):
-                samples.append(vpat_id)
+                samples.append(vpat_id.detach())
                 bboxes.append(vbbox.detach())
-                scores.append(DiceMax(F.softmax(self.model(vi), 1), OneHot(vt, self.num_classes - 1)))
+                scores.append(DiceMax(F.softmax(self.model(vi), 1), OneHot(vt, self.num_classes - 1).detach()))
             bboxes = torch.cat(bboxes)
-            device = bboxes.get_device()
             scores = torch.tensor(scores, device=device)
             samples = torch.tensor(samples, device=device)
-            bbox_gather = [torch.zeros((self.total_val_size, 1),
+            bbox_gather = [torch.zeros((self.total_val_size, 6),
                                        dtype=torch.int64, device=device) for _ in range(self.no_gpus)]
-            scores_gather = [torch.zeros((self.total_val_size, self.num_classes - 1),
+            scores_gather = [torch.zeros((self.total_val_size, 1),
                                         dtype=torch.float32, device=device) for _ in range(self.no_gpus)]
             sam_gather = [torch.zeros((self.total_val_size, 1),
                                        dtype=torch.int64, device=device) for _ in range(self.no_gpus)]

@@ -69,7 +69,6 @@ class TestRun:
 
     def __init__(self, cfgs):
         assert torch.cuda.is_available()
-        self.device = torch.device("cuda:0")
         self.world_size = torch.cuda.device_count()
         self.cfgs = cfgs
         self.data_cfgs = cfgs.dataset_params
@@ -114,10 +113,12 @@ class TestRun:
 
     def _TrainDDP(self, rank):
         self._SetupDDP(rank)
-        test_data = TestDataset(self.data, self.truths, rank)
+        device = torch.device("cuda", rank)
+        torch.cuda.set_device(device)
+        test_data = TestDataset(self.data, self.truths, device)
         test_sampler = DistributedSampler(test_data, shuffle=True)
         test_loader = DataLoader(test_data, batch_size=self.batch_size, sampler=test_sampler)
-        self.test_net = DDP(nnUnet(**self.model_cfgs).to(rank), device_ids=[rank])
+        self.test_net = DDP(nnUnet(**self.model_cfgs).to(device), device_ids=[rank])
         self.test_opt = AdamW(self.test_net.module.parameters(), **self.optim_cfgs)
         for epoch in range(1, self.epochs+1):
             test_sampler.set_epoch(epoch)
@@ -138,9 +139,10 @@ class TestRun:
         return
 
     def Run(self):
-        test_data = TestDataset(self.data, self.truths, self.device)
+        device = torch.device("cuda:0")
+        test_data = TestDataset(self.data, self.truths, device)
         test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
-        self.test_net = nnUnet(**self.model_cfgs).to(self.device)
+        self.test_net = nnUnet(**self.model_cfgs).to(device)
         self.test_opt = AdamW(self.test_net.parameters(), **self.optim_cfgs)
         for epoch in range(1, self.epochs+1):
             self.test_net.train()
@@ -155,7 +157,7 @@ class TestRun:
         return
 
     def LoopDataset(self):
-        test_data = TestDataset(self.data, self.truths, self.device)
+        test_data = TestDataset(self.data, self.truths, device)
         test_loader = DataLoader(test_data, batch_size=self.batch_size, shuffle=True)
         for batch, (inp, gt) in enumerate(test_loader):
             print(f"shapes: {inp.shape}, {gt.shape}")
