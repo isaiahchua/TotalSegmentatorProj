@@ -35,7 +35,6 @@ class Train:
 
     def __init__(self, cfgs):
         assert torch.cuda.is_available()
-        self.device = torch.device("cuda:1")
         self.no_gpus = torch.cuda.device_count()
 
         self.paths = cfgs.paths
@@ -119,6 +118,7 @@ class Train:
         print(f"Checkpoint with {self.met_name} = {value} saved to {self.ckpts_path}.")
 
     def _TrainModelDDP(self, gpu_id):
+        print(gpu_id)
         self._SetupDDP(gpu_id, self.no_gpus)
         self.train_data = TotalSegmentatorData(gpu_id, self.train_data_path, self.data_cfgs)
         self.val_data = TotalSegmentatorData(gpu_id, self.val_data_path, self.data_cfgs)
@@ -175,9 +175,9 @@ class Train:
                     self.optimizer.zero_grad()
                     p = self.model(inp)
                     # remove overlap class
-                    gt[gt == self.num_classes - 1] = 0
                     gt_oh = OneHot(gt, self.num_classes - 1)
-                    dice = DiceWin(F.softmax(p), gt_oh)
+                    dice = DiceWin(F.softmax(p, 1), gt_oh)
+                    gt[gt == self.num_classes - 1] = 0
                     ce = F.cross_entropy(p, gt.squeeze(1))
                     loss = ce + dice
                     loss.backward()
@@ -204,18 +204,19 @@ class Train:
             bboxes = []
             scores = []
             for vbatch, (vpat_id, vbbox, vi, vt) in enumerate(self.validloader):
-                samples.append(vpat_id.detach())
+                samples.extend(vpat_id)
                 bboxes.append(vbbox.detach())
-                scores.append(DiceMax(F.softmax(self.model(vi)), OneHot(vt, self.num_classes)))
-            samples = torch.cat(samples)
+                scores.append(DiceMax(F.softmax(self.model(vi), 1), OneHot(vt, self.num_classes - 1)))
             bboxes = torch.cat(bboxes)
-            scores = torch.cat(scores)
-            sam_gather = [torch.zeros((self.total_val_size, 1),
-                                       dtype=torch.int64).to(scores.device) for _ in range(self.no_gpus)]
-            sam_gather = [torch.zeros((self.total_val_size, 1),
-                                       dtype=torch.int64).to(scores.device) for _ in range(self.no_gpus)]
+            device = bboxes.get_device()
+            scores = torch.tensor(scores, device=device)
+            samples = torch.tensor(samples)
+            bboxes_gather = [torch.zeros((self.total_val_size, 1),
+                                       dtype=torch.int64, device=device) for _ in range(self.no_gpus)]
             scores_gather = [torch.zeros((self.total_val_size, self.num_classes - 1),
-                                        dtype=torch.float32).to(scores.device) for _ in range(self.no_gpus)]
+                                        dtype=torch.float32, device=device) for _ in range(self.no_gpus)]
+            sam_gather = [torch.zeros((self.total_val_size, 1),
+                                       dtype=torch.int64, device=device) for _ in range(self.no_gpus)]
             dist.all_gather(sam_gather, samples)
             dist.all_gather(bbox_gather, bboxes)
             dist.all_gather(scores_gather, scores)
@@ -269,7 +270,7 @@ class Train:
 
     @TimeFuncDecorator(True)
     def LoopDataset(self):
-        temp_data = TotalSegmentatorData(self.device, self.train_data_path, self.data_cfgs)
+        temp_data = TotalSegmentatorData(torch.device("cpu"), self.train_data_path, self.data_cfgs)
         temp_loader = DataLoader(temp_data, batch_size=self.batch_size, shuffle=False)
         for name, loc, inp, gt in temp_loader:
             print(f"pat: {name} | im: {inp.shape}, {inp.dtype} | gt: {gt.shape}, {gt.dtype}")

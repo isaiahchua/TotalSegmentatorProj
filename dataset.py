@@ -8,16 +8,8 @@ import torchio as tio
 import glob
 from torch.utils.data import Dataset, DataLoader
 import time
-from utils import RandomCrop2
+from utils import RandomCrop2, PrintTimeDecorator
 
-def PrintTime(func):
-    def TimeModule(*args, **kwargs):
-        start = time.time()
-        results = func(*args, **kwargs)
-        end = time.time()
-        print(f"time taken: {end - start} s")
-        return results
-    return TimeModule
 
 class TotalSegmentatorData(Dataset):
 
@@ -34,12 +26,15 @@ class TotalSegmentatorData(Dataset):
         self.rotation = cfgs.rotation_angles
         self.gamma = cfgs.gamma_range
         self.shrink_f = cfgs.model_shrinking_factor
+        self.no_ctrl_pts = cfgs.num_control_points
+        self.max_disp = cfgs.max_displacement
         self.aug_map = defaultdict(self._AugInvalid,
             {
                 "crop": tio.Lambda(RandomCrop2),
                 "affine": tio.RandomAffine(scales=self.scaling,
                                            degrees=self.rotation),
-                "deformation": tio.RandomElasticDeformation(),
+                "deformation": tio.RandomElasticDeformation(max_displacement=self.max_disp,
+                                                            num_control_points=self.no_ctrl_pts),
                 "gamma": tio.RandomGamma(log_gamma=self.gamma),
                 "noise": tio.OneOf({tio.RandomNoise(std=(0., 0.1)): 0.75,
                                     tio.RandomBlur(std=(0., 1.)): 0.25}),
@@ -76,7 +71,7 @@ class TotalSegmentatorData(Dataset):
             pat_name,
             pat_aug.location.data.to(self.device),
             pat_aug.image.data.to(self.device),
-            pat_aug.seg.data.to(self.device),
+            pat_aug.seg.data.to(dtype=torch.int64, device=self.device),
         )
         return output
 

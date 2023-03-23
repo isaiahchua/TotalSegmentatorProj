@@ -70,7 +70,7 @@ class UpsampleBlock(nn.Module):
 
 class OutConv(nn.Module):
 
-    def __init__(self, in_chn, num_classes, debug):
+    def __init__(self, in_chn, num_classes):
         super().__init__()
         self.deconv = nn.ConvTranspose3d(in_chn, in_chn, 2, 2)
         self.norm = nn.InstanceNorm3d(in_chn, affine=True)
