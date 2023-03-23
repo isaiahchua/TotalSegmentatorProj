@@ -35,7 +35,7 @@ class Train:
 
     def __init__(self, cfgs):
         assert torch.cuda.is_available()
-        self.device = torch.device("cuda")
+        self.device = torch.device("cuda:1")
         self.no_gpus = torch.cuda.device_count()
 
         self.paths = cfgs.paths
@@ -265,6 +265,13 @@ class Train:
 
     def RunDDP(self):
         mp.spawn(self._TrainModelDDP, nprocs=self.no_gpus)
+
+    def LoopDataset(self):
+        temp_data = TotalSegmentatorData(self.device, self.train_data_path, self.data_cfgs)
+        temp_loader = DataLoader(temp_data, batch_size=self.batch_size, shuffle=False)
+        for name, loc, inp, gt in temp_loader:
+            print(f"pat: {name} | im: {inp.shape}, {inp.dtype} | gt: {gt.shape}, {gt.dtype}")
+        return
 
 if __name__ == "__main__":
     pass
