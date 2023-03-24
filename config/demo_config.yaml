@@ -2,7 +2,7 @@ paths: {
     data_src: "/home/dataset/TotalSegmentor/Totalsegmentator_dataset/",
     data_dest: "/home/isaiah/TotalSegmentator/demo/",
     metadata_src: "/home/dataset/TotalSegmentor/meta.csv",
-    model_load_src: "/home/isaiah/TotalSegmentator/results/20230324/nnunet_ckpt_01.pth",
+    model_load_src: null,
     model_ckpts_dest: "/home/isaiah/TotalSegmentator/results/20230324/demo_nnunet_ckpt_01.pth",
     model_best_dest: "/home/isaiah/TotalSegmentator/results/20230324/demo_nnunet_best_01.pth",
     train_report_path: "/home/isaiah/TotalSegmentator/results/20230324/demo_nnunet_train_reps_01",

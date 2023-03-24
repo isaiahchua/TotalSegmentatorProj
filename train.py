@@ -143,10 +143,10 @@ class Train:
                                                          **self.optimizer_cfgs)
         if optimizer_state != None:
             self.optimizer.load_state_dict(optimizer_state)
-        # del model_state
-        # del optimizer_state
-        # del self.prev_model
-        # torch.cuda.empty_cache()
+        del model_state
+        del optimizer_state
+        del self.prev_model
+        torch.cuda.empty_cache()
 
         if self.sel_scheduler == None:
             self.scheduler = NullScheduler()
@@ -226,8 +226,8 @@ class Train:
                 dice_scores.append(-1.*DiceMax(F.softmax(pv, 1),
                                                          OneHot(vt, self.num_classes - 1)).detach().item())
                 vt[vt == self.num_classes - 1] = 0
-                ce_scores.append(-1.*F.cross_entropy(pv, vt.squeeze(1)))
-            eval_writer.writerow([epoch, samples, bboxes, cross_entropy_scores, dice_scores])
+                ce_scores.append(-1.*F.cross_entropy(pv, vt.squeeze(1)).detach().item())
+            eval_writer.writerow([epoch, samples, bboxes, ce_scores, dice_scores])
             if gpu_id == 0:
                 sco = np.asarray(dice_scores).mean()
                 state = {
