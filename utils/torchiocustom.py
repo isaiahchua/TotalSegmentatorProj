@@ -44,5 +44,15 @@ def RandomCrop2(im: torch.Tensor):
     im = im[:, a[0]:b[0], a[1]:b[1], a[2]:b[2]]
     return im
 
-
+def CenterCrop(im: torch.Tensor):
+    """Random cropping on 4D tensor which does not fail on smaller images"""
+    size = (128, 128, 128)
+    bbox = np.asarray(size)
+    sh = np.array(im.shape[1:])
+    mask = sh < bbox
+    bbox[mask] = sh[mask]
+    a = (sh - bbox) // 2
+    b = a + bbox
+    im = im[:, a[0]:b[0], a[1]:b[1], a[2]:b[2]]
+    return im
 

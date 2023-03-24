@@ -8,7 +8,7 @@ import torchio as tio
 import glob
 from torch.utils.data import Dataset, DataLoader
 import time
-from utils import RandomCrop2, PrintTimeDecorator
+from utils import CenterCrop, RandomCrop2, PrintTimeDecorator
 
 
 class TotalSegmentatorData(Dataset):
@@ -30,7 +30,8 @@ class TotalSegmentatorData(Dataset):
         self.max_disp = cfgs.max_displacement
         self.aug_map = defaultdict(self._AugInvalid,
             {
-                "crop": tio.Lambda(RandomCrop2),
+                "rand_crop": tio.Lambda(RandomCrop2),
+                "center_crop": tio.Lambda(CenterCrop),
                 "affine": tio.RandomAffine(scales=self.scaling,
                                            degrees=self.rotation),
                 "deformation": tio.RandomElasticDeformation(max_displacement=self.max_disp,

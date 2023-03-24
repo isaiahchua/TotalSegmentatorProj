@@ -121,17 +121,17 @@ def OnlineDice2(input,target):
 
     return dice_total
 
-def DiceWin(inp, gt, smooth=1., e=1.0e-8):
+def DiceWin(inp, gt, smooth=1.):
     """
     Inspired by Winson's dice
     """
     dims = list(range(2, len(inp.shape)))
-    return -2 * torch.mean((torch.sum(inp * gt, dims) + smooth) / (torch.sum(inp, dims) + torch.sum(gt, dims) + smooth + e))
+    return -1 * torch.mean((2 * torch.sum(inp * gt, dims) + smooth) / (torch.sum(inp, dims) + torch.sum(gt, dims) + smooth))
 
-def DiceMax(inp, gt, smooth=1., e=1.0e-8):
+def DiceMax(inp, gt, smooth=1.):
     """
     Max's dice
     """
     dims = list(range(2, len(inp.shape)))
     valid=~torch.eq(gt,105)
-    return - 2 * torch.mean((torch.sum(inp*gt*valid, dims)+smooth)/(torch.sum(inp*valid, dims)+torch.sum(gt*valid, dims)+smooth+e))
+    return - 1 * torch.mean((2 * torch.sum(inp*gt*valid, dims)+smooth)/(torch.sum(inp*valid, dims)+torch.sum(gt*valid, dims)+smooth))
