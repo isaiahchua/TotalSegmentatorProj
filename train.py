@@ -42,13 +42,7 @@ class Train:
         self.scheduler_cfgs = cfgs.scheduler_params
         self.data_cfgs = cfgs.dataset_params
         self.train_cfgs = cfgs.run_params
-
-        if self.paths.model_load_src != None:
-            self.model_state = torch.load(self.paths.model_load_src)["model"]
-            self.optimizer_state = torch.load(self.paths.model_load_src)["optimizer"]
-        else:
-            self.model_state = None
-            self.optimizer_state = None
+        self.prev_model = self.paths.model_load_src
 
         self.ckpts_path = abspath(self.paths.model_ckpts_dest)
         self.model_best_path = abspath(self.paths.model_best_dest)
@@ -133,6 +127,14 @@ class Train:
         self.validloader = DataLoader(self.val_data, self.val_size, sampler=self.val_sampler)
         self.total_val_size = len(self.val_sampler)
         model = self.model_dict[self.model_name](**self.model_cfgs).to(device)
+
+        if self.prev_model != None:
+            self.model_state = torch.load(self.prev_model)["model"]
+            self.optimizer_state = torch.load(self.prev_model)["optimizer"]
+        else:
+            self.model_state = None
+            self.optimizer_state = None
+
         if self.model_state != None:
             model.load_state_dict(self.model_state)
             print(f"gpu_id: {gpu_id} - model loaded.")
@@ -141,6 +143,9 @@ class Train:
                                                          **self.optimizer_cfgs)
         if self.optimizer_state != None:
             self.optimizer.load_state_dict(self.optimizer_state)
+        del self.model_state
+        del self.optimizer_state
+        torch.cuda.empty_cache()
         if self.sel_scheduler == None:
             self.scheduler = NullScheduler()
         else:

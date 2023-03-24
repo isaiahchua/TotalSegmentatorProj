@@ -3,10 +3,10 @@ paths: {
     data_dest: "/home/isaiah/TotalSegmentator/demo/",
     metadata_src: "/home/dataset/TotalSegmentor/meta.csv",
     model_load_src: null,
-    model_ckpts_dest: "/home/isaiah/TotalSegmentator/results/20230323/demo_nnunet_ckpt_02.pth",
-    model_best_dest: "/home/isaiah/TotalSegmentator/results/20230323/demo_nnunet_best_02.pth",
-    train_report_path: "/home/isaiah/TotalSegmentator/results/20230323/demo_nnunet_train_reps_02",
-    eval_report_path: "/home/isaiah/TotalSegmentator/results/20230323/demo_nnunet_eval_reps_02",
+    model_ckpts_dest: "/home/isaiah/TotalSegmentator/results/20230323/demo_nnunet_ckpt_03.pth",
+    model_best_dest: "/home/isaiah/TotalSegmentator/results/20230323/demo_nnunet_best_03.pth",
+    train_report_path: "/home/isaiah/TotalSegmentator/results/20230323/demo_nnunet_train_reps_03",
+    eval_report_path: "/home/isaiah/TotalSegmentator/results/20230323/demo_nnunet_eval_reps_03",
 }
 
 preprocess_params: {
