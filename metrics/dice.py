@@ -1,6 +1,41 @@
 import sys
+import numpy as np
 import torch
 import torch.nn.functional as F
+
+def PFbeta(labels, predictions, beta, eps=1e-5):
+    # eps is a small error term added for numerical stability
+    y_true_count = 0
+    ctp = 0
+    cfp = 0
+
+    for idx in range(len(labels)):
+        prediction = min(max(predictions[idx], 0), 1)
+        if (labels[idx]):
+            y_true_count += 1
+            ctp += prediction
+        else:
+            cfp += prediction
+
+    beta_squared = beta * beta
+    c_precision = (ctp + eps) / (ctp + cfp + eps)
+    c_recall = (ctp + eps) / (y_true_count + eps)
+    if (c_precision > 0 and c_recall > 0):
+        result = (1 + beta_squared) * (c_precision * c_recall) / (beta_squared * c_precision + c_recall)
+        return result
+    else:
+        return 0.
+
+def BalancedF1Score(preds, gt, n=None):
+    true_ids = np.arange(len(gt))[gt == 1].astype(int)
+    false_ids = np.arange(len(gt))[gt == 0].astype(int)
+    if n == None:
+        n = len(true_ids)
+    sel_true_ids = np.random.choice(true_ids, n).astype(int)
+    sel_false_ids = np.random.choice(false_ids, n).astype(int)
+    sel_gt = np.concatenate((gt[sel_true_ids], gt[sel_false_ids]))
+    sel_preds = np.concatenate((preds[sel_true_ids], preds[sel_false_ids]))
+    return PFbeta(sel_gt, sel_preds, beta=1.)
 
 def Dice(inp, gt):
 
