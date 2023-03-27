@@ -221,14 +221,15 @@ class Train:
             bboxes = []
             dice_scores = []
             ce_scores = []
-            for vbatch, (vpat_id, vbbox, vi, vt) in enumerate(self.validloader):
-                samples.append(vpat_id.detach().item())
-                bboxes.append(vbbox.detach().tolist())
-                pv = self.model(vi)
-                dice_scores.append(-1.*DiceMax(F.softmax(pv, 1),
-                                                         OneHot(vt, self.num_classes - 1)).detach().item())
-                vt[vt == self.num_classes - 1] = 0
-                ce_scores.append(F.cross_entropy(pv, vt.squeeze(1)).detach().item())
+            with torch.no_grad():
+                for vbatch, (vpat_id, vbbox, vi, vt) in enumerate(self.validloader):
+                    samples.append(vpat_id.detach().item())
+                    bboxes.append(vbbox.detach().tolist())
+                    pv = self.model(vi)
+                    dice_scores.append(-1.*DiceMax(F.softmax(pv, 1),
+                                                             OneHot(vt, self.num_classes - 1)).detach().item())
+                    vt[vt == self.num_classes - 1] = 0
+                    ce_scores.append(F.cross_entropy(pv, vt.squeeze(1)).detach().item())
             eval_writer.writerow([epoch, samples, bboxes, ce_scores, dice_scores])
             if gpu_id == 0:
                 sco = np.asarray(dice_scores).mean()
