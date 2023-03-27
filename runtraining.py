@@ -7,7 +7,7 @@ import argparse
 import yaml
 import torch
 import shutil
-from train import Train
+from train_old import Train
 
 def SaveConfigFile(src, paths):
     results_path = dirname(abspath(paths.model_ckpts_dest))

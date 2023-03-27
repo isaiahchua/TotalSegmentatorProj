@@ -112,14 +112,13 @@ class Train:
         print(f"Checkpoint with {self.met_name} = {value} saved to {self.ckpts_path}.")
 
     def _TrainModelDDP(self, gpu_id):
-
         self._SetupDDP(gpu_id, self.no_gpus)
         if gpu_id == 0:
             self._RemoveDir(self.train_report_path)
             self._RemoveDir(self.eval_report_path)
             os.makedirs(self.train_report_path)
             os.makedirs(self.eval_report_path)
-        dist.barrier()
+
         device = torch.device("cuda", gpu_id)
         torch.cuda.set_device(device)
         self.train_data = TotalSegmentatorData(device, self.train_data_path, self.train_data_cfgs)
@@ -203,15 +202,12 @@ class Train:
                         block_loss = np.asarray(losses).mean()
                         block_dice = np.asarray(dice_scores).mean()
                         block_ce = np.asarray(ce_scores).mean()
-                        block_loss = loss.detach().cpu().numpy()
-                        block_dice = -1*dice.detach().cpu().item()
-                        block_ce = ce.detach().cpu().item()
                         train_writer.writerow([epoch, block, last_lr, block_loss,
-                                           block_ce, block_dice])
+                                               block_ce, block_dice])
                         if gpu_id == 0:
                             print((f"epoch {epoch}/{self.epochs} | block: {block}, block_size: {self.block_size} | "
-                                   f"loss: {block_loss:.5f}, cross_entropy: {block_ce:.5f}, block_dice: {block_dice:.5f}, "
-                                   f"{self.met_name}: {sco:.5f}, best: {best_score:.5f}"))
+                                   f"loss: {block_loss:.5f}, cross_entropy: {block_ce}, block_dice: {block_dice:.3f}, "
+                                   f"{self.met_name}: {sco:.3f}, best: {best_score:.3f}"))
                         dice_scores = []
                         ce_scores = []
                         losses = []
@@ -229,12 +225,10 @@ class Train:
                 samples.append(vpat_id.detach().item())
                 bboxes.append(vbbox.detach().tolist())
                 pv = self.model(vi)
-                dice = -1.*DiceMax(F.softmax(pv, 1),
-                                    OneHot(vt, self.num_classes - 1))
+                dice_scores.append(-1.*DiceMax(F.softmax(pv, 1),
+                                                         OneHot(vt, self.num_classes - 1)).detach().item())
                 vt[vt == self.num_classes - 1] = 0
-                ce = F.cross_entropy(pv, vt.squeeze(1))
-                dice_scores.append(dice.detach().item())
-                ce_scores.append(ce.detach().item())
+                ce_scores.append(F.cross_entropy(pv, vt.squeeze(1)).detach().item())
             eval_writer.writerow([epoch, samples, bboxes, ce_scores, dice_scores])
             if gpu_id == 0:
                 sco = np.asarray(dice_scores).mean()

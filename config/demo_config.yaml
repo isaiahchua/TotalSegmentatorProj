@@ -3,10 +3,10 @@ paths: {
     data_dest: "/home/isaiah/TotalSegmentator/demo/",
     metadata_src: "/home/dataset/TotalSegmentor/meta.csv",
     model_load_src: null,
-    model_ckpts_dest: "/home/isaiah/TotalSegmentator/results/20230327/demo_nnunet_ckpt_01.pth",
-    model_best_dest: "/home/isaiah/TotalSegmentator/results/20230327/demo_nnunet_best_01.pth",
-    train_report_path: "/home/isaiah/TotalSegmentator/results/20230327/demo_nnunet_train_reps_01",
-    eval_report_path: "/home/isaiah/TotalSegmentator/results/20230327/demo_nnunet_eval_reps_01",
+    model_ckpts_dest: "/home/isaiah/TotalSegmentator/results/20230327/demo_nnunet_ckpt_02.pth",
+    model_best_dest: "/home/isaiah/TotalSegmentator/results/20230327/demo_nnunet_best_02.pth",
+    train_report_path: "/home/isaiah/TotalSegmentator/results/20230327/demo_nnunet_train_reps_02",
+    eval_report_path: "/home/isaiah/TotalSegmentator/results/20230327/demo_nnunet_eval_reps_02",
 }
 
 preprocess_params: {
@@ -19,7 +19,7 @@ preprocess_params: {
 }
 
 train_dataset_params: {
-    augmentations: ["rand_crop", "affine", "deformation", "gamma", "pad_to_size"],
+    augmentations: ["center_crop", "affine", "deformation", "gamma", "pad_to_size"],
     scaling_factors: 0.1,
     rotation_angles: 10.,
     gamma_range: [-0.3, 0.3],
@@ -52,6 +52,7 @@ scheduler_params: {
     max_lr: 0.1,
     step_size_up: 4,
     mode: "triangular",
+    cycle_momentum: False,
 }
 
 model_params: {
