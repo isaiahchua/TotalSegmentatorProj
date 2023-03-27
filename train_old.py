@@ -161,21 +161,20 @@ class Train:
 
         # label_weights = torch.tensor(self.label_weights, dtype=torch.float32).to(gpu_id)
         # loss_weights = torch.tensor(self.loss_weights, dtype=torch.float32).to(gpu_id)
-        if gpu_id == 0:
-            train_log = open(join(self.train_report_path, f"rank{gpu_id}.csv"), "a")
-            eval_log = open(join(self.eval_report_path, f"rank{gpu_id}.csv"), "a")
-            train_writer = csv.writer(train_log)
-            eval_writer = csv.writer(eval_log)
-            train_writer.writerow(["epoch", "block", "learning_rate",
-                                   "loss", "cross_entropy_scores", "dice_scores"])
-            eval_writer.writerow(["epoch", "samples", "bboxes",
-                                  "cross_entropy_scores", "dice_scores"])
+        train_log = open(join(self.train_report_path, f"rank{gpu_id}.csv"), "a")
+        eval_log = open(join(self.eval_report_path, f"rank{gpu_id}.csv"), "a")
+        train_writer = csv.writer(train_log)
+        eval_writer = csv.writer(eval_log)
+        train_writer.writerow(["epoch", "block", "learning_rate",
+                               "loss", "cross_entropy_scores", "dice_scores"])
+        eval_writer.writerow(["epoch", "samples", "bboxes",
+                              "cross_entropy_scores", "dice_scores"])
         best_score = 0.
         sco = 0.
         block = 1
-        # dice_scores = []
-        # ce_scores = []
-        # losses = []
+        dice_scores = []
+        ce_scores = []
+        losses = []
         for epoch in range(1, self.epochs + 1):
             self.train_sampler.set_epoch(epoch)
             self.val_sampler.set_epoch(epoch)
@@ -194,31 +193,28 @@ class Train:
                     ce = F.cross_entropy(p, gt.squeeze(1))
                     loss = ce + dice
                     loss.backward()
-                    # dice_scores.append(-1.*dice.detach().cpu().item())
-                    # ce_scores.append(ce.detach().cpu().item())
-                    # losses.append(loss.detach().cpu().item())
+                    dice_scores.append(-1.*dice.detach().cpu().item())
+                    ce_scores.append(ce.detach().cpu().item())
+                    losses.append(loss.detach().cpu().item())
                     self.optimizer.step()
                     if self.sel_scheduler == "cyclic":
                         self.scheduler.step()
                     if (batch + 1) % self.track_freq == 0:
-                        dist.barrier()
-                        dist.reduce(dice, 0)
-                        dist.reduce(loss, 0)
-                        dist.reduce(ce, 0)
-                        # block_loss = np.asarray(losses).mean()
-                        # block_dice = np.asarray(dice_scores).mean()
-                        # block_ce = np.asarray(ce_scores).mean()
-                        block_loss = loss.detach().cpu().numpy()/self.no_gpus
-                        block_dice = -1*dice.detach().cpu().item()/self.no_gpus
-                        block_ce = ce.detach().cpu().item()/self.no_gpus
+                        block_loss = np.asarray(losses).mean()
+                        block_dice = np.asarray(dice_scores).mean()
+                        block_ce = np.asarray(ce_scores).mean()
+                        block_loss = loss.detach().cpu().numpy()
+                        block_dice = -1*dice.detach().cpu().item()
+                        block_ce = ce.detach().cpu().item()
+                        train_writer.writerow([epoch, block, last_lr, block_loss,
+                                           block_ce, block_dice])
                         if gpu_id == 0:
                             print((f"epoch {epoch}/{self.epochs} | block: {block}, block_size: {self.block_size} | "
                                    f"loss: {block_loss:.5f}, cross_entropy: {block_ce:.5f}, block_dice: {block_dice:.5f}, "
                                    f"{self.met_name}: {sco:.5f}, best: {best_score:.5f}"))
-                            train_writer.writerow([epoch, block, last_lr, block_loss,
-                                               block_ce, block_dice])
-                        # dice_scores = []
-                        # ce_scores = []
+                        dice_scores = []
+                        ce_scores = []
+                        losses = []
                         block += 1
 
             # Validation loop;  every epoch
@@ -237,12 +233,10 @@ class Train:
                                     OneHot(vt, self.num_classes - 1))
                 vt[vt == self.num_classes - 1] = 0
                 ce = F.cross_entropy(pv, vt.squeeze(1))
-                dist.reduce(dice, 0)
-                dist.reduce(ce, 0)
                 dice_scores.append(dice.detach().item())
                 ce_scores.append(ce.detach().item())
+            eval_writer.writerow([epoch, samples, bboxes, ce_scores, dice_scores])
             if gpu_id == 0:
-                eval_writer.writerow([epoch, samples, bboxes, ce_scores, dice_scores])
                 sco = np.asarray(dice_scores).mean()
                 state = {
                     "model": self.model.module.state_dict(),
@@ -252,9 +246,8 @@ class Train:
                 if sco > best_score:
                     best_score = sco
                     self._SaveBestModel(state, best_score)
-        if gpu_id == 0:
-            train_log.close()
-            eval_log.close()
+        train_log.close()
+        eval_log.close()
         self._ShutdownDDP()
         return
 

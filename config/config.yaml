@@ -2,11 +2,11 @@ paths: {
     data_src: "/home/dataset/TotalSegmentor/Totalsegmentator_dataset/",
     data_dest: "/home/isaiah/TotalSegmentator/preprocessed2/",
     metadata_src: "/home/dataset/TotalSegmentor/meta.csv",
-    model_load_src: null,
-    model_ckpts_dest: "/home/isaiah/TotalSegmentator/results/20230324/nnunet_ckpt_01.pth",
-    model_best_dest: "/home/isaiah/TotalSegmentator/results/20230324/nnunet_best_01.pth",
-    train_report_path: "/home/isaiah/TotalSegmentator/results/20230324/nnunet_train_reps_01",
-    eval_report_path: "/home/isaiah/TotalSegmentator/results/20230324/nnunet_eval_reps_01",
+    model_load_src: "/home/isaiah/TotalSegmentator/results/20230324/nnunet_ckpt_02.pth",
+    model_ckpts_dest: "/home/isaiah/TotalSegmentator/results/20230327/nnunet_ckpt_01.pth",
+    model_best_dest: "/home/isaiah/TotalSegmentator/results/20230327/nnunet_best_01.pth",
+    train_report_path: "/home/isaiah/TotalSegmentator/results/20230327/nnunet_train_reps_01",
+    eval_report_path: "/home/isaiah/TotalSegmentator/results/20230327/nnunet_eval_reps_01",
 }
 
 preprocess_params: {
@@ -18,8 +18,20 @@ preprocess_params: {
     pack_bits: True,
 }
 
-dataset_params: {
-    augmentations: ["crop", "affine", "deformation", "gamma", "pad_to_size"],
+train_dataset_params: {
+    augmentations: ["rand_crop", "affine", "deformation", "gamma", "pad_to_size"],
+    scaling_factors: 0.1,
+    rotation_angles: 10.,
+    gamma_range: [-0.3, 0.3],
+    model_shrinking_factor: 128,
+    num_control_points: 7,
+    max_displacement: 3.,
+    labels: [],
+    file_extension: "npz",
+}
+
+validation_dataset_params: {
+    augmentations: ["center_crop", "affine", "deformation", "gamma", "pad_to_size"],
     scaling_factors: 0.1,
     rotation_angles: 10.,
     gamma_range: [-0.3, 0.3],
@@ -31,13 +43,13 @@ dataset_params: {
 }
 
 optimizer_params: {
-    lr: 3.0e-5,
+    lr: 0.1,
     weight_decay: 1.0e-4,
 }
 
 scheduler_params: {
-    base_lr: 1.0e-5,
-    max_lr: 1.0e-3,
+    base_lr: 1.0e-3,
+    max_lr: 0.1,
     step_size_up: 240,
     mode: "triangular",
     cycle_momentum: False,
@@ -55,7 +67,7 @@ run_params: {
     scheduler: "cyclic",
     metric: "dice",
     disable_cuda: False,
-    epochs: 20,
+    epochs: 10,
     batch_size: 1,
     validation_size: 1,
     tracking_frequency: 1,
