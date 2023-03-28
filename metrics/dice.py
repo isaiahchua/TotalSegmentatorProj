@@ -126,7 +126,7 @@ def DiceWin(inp, gt, smooth=1.):
     Inspired by Winson's dice
     """
     dims = list(range(2, len(inp.shape)))
-    return -1 * torch.mean((2 * torch.sum(inp * gt, dims) + smooth) / (torch.sum(inp, dims) + torch.sum(gt, dims) + smooth))
+    return 1. - torch.mean((2 * torch.sum(inp * gt, dims) + smooth) / (torch.sum(inp, dims) + torch.sum(gt, dims) + smooth))
 
 def DiceMax(inp, gt, smooth=1.):
     """
@@ -134,4 +134,4 @@ def DiceMax(inp, gt, smooth=1.):
     """
     dims = list(range(2, len(inp.shape)))
     valid=~torch.eq(gt,105)
-    return - 1 * torch.mean((2 * torch.sum(inp*gt*valid, dims)+smooth)/(torch.sum(inp*valid, dims)+torch.sum(gt*valid, dims)+smooth))
+    return 1. - torch.mean((2 * torch.sum(inp*gt*valid, dims)+smooth)/(torch.sum(inp*valid, dims)+torch.sum(gt*valid, dims)+smooth))

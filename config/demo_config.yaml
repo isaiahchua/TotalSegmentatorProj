@@ -20,7 +20,7 @@ preprocess_params: {
 }
 
 train_dataset_params: {
-    augmentations: ["center_crop", "affine", "deformation", "gamma", "pad_to_size"],
+    augmentations: ["center_crop"],
     scaling_factors: 0.1,
     rotation_angles: 10.,
     gamma_range: [-0.3, 0.3],
@@ -32,7 +32,7 @@ train_dataset_params: {
 }
 
 validation_dataset_params: {
-    augmentations: ["center_crop", "affine", "deformation", "gamma", "pad_to_size"],
+    augmentations: ["center_crop"],
     scaling_factors: 0.1,
     rotation_angles: 10.,
     gamma_range: [-0.3, 0.3],
@@ -72,7 +72,7 @@ run_params: {
     batch_size: 1,
     validation_size: 1,
     tracking_frequency: 1,
-    loss_weights: [0.5, 0.5],
+    loss_weights: [0.2, 0.8],
     label_weights: [0.75, 0.14, 0.07, 0.04],
     num_classes: 106,
 }

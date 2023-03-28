@@ -84,7 +84,7 @@ class Train:
         # self.labels = self.data_cfgs.labels
         # assert len(self.labels) == len(self.label_weights)
         # assert len(self.labels) == self.model_cfgs.num_classes
-        # assert len(self.loss_weights) == 2
+        assert len(self.loss_weights) == 2
 
         self.e = 1e-6
 
@@ -190,9 +190,9 @@ class Train:
                     dice = DiceWin(F.softmax(p, 1), gt_oh)
                     gt[gt == self.num_classes - 1] = 0
                     ce = F.cross_entropy(p, gt.squeeze(1))
-                    loss = ce + dice
+                    loss = self.loss_weights[0]/epoch*ce + self.loss_weights[1]*dice
                     loss.backward()
-                    dice_scores.append(-1.*dice.detach().cpu().item())
+                    dice_scores.append(1. - dice.detach().cpu().item())
                     ce_scores.append(ce.detach().cpu().item())
                     losses.append(loss.detach().cpu().item())
                     self.optimizer.step()
@@ -216,17 +216,17 @@ class Train:
             # Validation loop;  every epoch
             if self.sel_scheduler != "cyclic":
                 self.scheduler.step()
-            self.model.eval()
             samples = []
             bboxes = []
             dice_scores = []
             ce_scores = []
+            self.model.eval()
             with torch.no_grad():
                 for vbatch, (vpat_id, vbbox, vi, vt) in enumerate(self.validloader):
                     samples.append(vpat_id.detach().item())
                     bboxes.append(vbbox.detach().tolist())
                     pv = self.model(vi)
-                    dice_scores.append(-1.*DiceMax(F.softmax(pv, 1),
+                    dice_scores.append(1. - DiceMax(F.softmax(pv, 1),
                                                              OneHot(vt, self.num_classes - 1)).detach().item())
                     vt[vt == self.num_classes - 1] = 0
                     ce_scores.append(F.cross_entropy(pv, vt.squeeze(1)).detach().item())
