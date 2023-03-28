@@ -13,7 +13,8 @@ from dataset import TotalSegmentatorData
 
 class DataViewer:
 
-    def __init__(self, device, dpath, cfgs, batch_size=1):
+    def __init__(self, device, dpath, cfgs, label_dict=None, batch_size=1):
+        self.label_dict = label_dict
         self.data = TotalSegmentatorData(device, dpath, cfgs)
         self.dloader = DataLoader(self.data, shuffle=True, batch_size=batch_size)
 
@@ -38,8 +39,7 @@ class DataViewer:
         pat_name, bbox, im, gt = next(iter(self.dloader))
         cpu_im = im.detach().squeeze().cpu().numpy()
         cpu_gt = gt.detach().squeeze().cpu().numpy()
-        PlotXYZSlices(cpu_im, pat_name, bbox.data.tolist(), cpu_gt, view_indices)
-
+        PlotXYZSlices(cpu_im, pat_name, bbox.data.tolist(), cpu_gt, label_dict=self.label_dict, view_indices=view_indices)
 
 def IndicesToLabels(indices, label_dict):
     return [label_dict[str(i)] for i in indices]

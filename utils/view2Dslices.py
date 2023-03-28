@@ -7,12 +7,15 @@ import SimpleITK as sitk
 import matplotlib.pyplot as plt
 import ast
 
+def IndicesToLabels(indices, label_dict):
+    return [label_dict[str(i)] for i in indices]
+
 def RandXYZIndices(ct_im):
     # when read as numpy arrays the images are ordered as (z, y, x) instead
     # of (x, y, z)
-    z_idx = random.randint(0, ct_im.shape[0])
-    y_idx = random.randint(0, ct_im.shape[1])
-    x_idx = random.randint(0, ct_im.shape[2])
+    z_idx = random.randint(0, ct_im.shape[0] - 1)
+    y_idx = random.randint(0, ct_im.shape[1] - 1)
+    x_idx = random.randint(0, ct_im.shape[2] - 1)
     return [x_idx, y_idx, z_idx]
 
 def IntensityClip(im, cutoff_intensity):
@@ -38,7 +41,7 @@ def RandXYZSlices(ct_im, view_indices=None, cutoff_intensity=None):
         z_slice = IntensityClip(z_slice, cutoff_intensity)
     return x_slice, y_slice, z_slice
 
-def PlotXYZSlices(ct_im, title, bbox="NA", seg_im=[], view_indices=None, cutoff_intensity=None):
+def PlotXYZSlices(ct_im, title, bbox="NA", seg_im=[], view_indices=None, label_dict=None, cutoff_intensity=None):
     if view_indices == None:
         view_indices = RandXYZIndices(ct_im)
     else:
@@ -67,6 +70,13 @@ def PlotXYZSlices(ct_im, title, bbox="NA", seg_im=[], view_indices=None, cutoff_
         axs[0].imshow(x_seg, cmap="rainbow", alpha=0.3)
         axs[1].imshow(y_seg, cmap="rainbow", alpha=0.3)
         axs[2].imshow(z_seg, cmap="rainbow", alpha=0.3)
+        if label_dict != None:
+            x_seg_labels = IndicesToLabels(np.unique(x_seg), label_dict)
+            print(f"Plot 1: {x_seg_labels}")
+            y_seg_labels = IndicesToLabels(np.unique(y_seg), label_dict)
+            print(f"Plot 2: {x_seg_labels}")
+            z_seg_labels = IndicesToLabels(np.unique(z_seg), label_dict)
+            print(f"Plot 3: {x_seg_labels}")
     plt.tight_layout()
     plt.show()
 
