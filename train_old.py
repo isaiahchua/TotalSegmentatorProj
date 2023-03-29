@@ -65,7 +65,8 @@ class Train:
         self.sel_optim = self.train_cfgs.optimizer
         self.sel_scheduler = self.train_cfgs.scheduler
         self.label_weights = self.train_cfgs.label_weights
-        self.loss_weights = self.train_cfgs.loss_weights
+        self.lw = self.train_cfgs.loss_weights
+        self.lw_decay = self.train_cfgs.loss_weights_decay
         self.num_classes = self.train_cfgs.num_classes
 
         self.model_dict = defaultdict(self._NoModelError, {
@@ -84,7 +85,8 @@ class Train:
         # self.labels = self.data_cfgs.labels
         # assert len(self.labels) == len(self.label_weights)
         # assert len(self.labels) == self.model_cfgs.num_classes
-        assert len(self.loss_weights) == 2
+        assert len(self.lw) == 2
+        assert len(self.lw_decay) == 2
 
         self.e = 1e-6
 
@@ -150,7 +152,7 @@ class Train:
         torch.cuda.empty_cache()
 
         if self.sel_scheduler == None:
-            self.scheduler = NullScheduler()
+            self.scheduler = NullScheduler(self.optimizer_cfgs.lr)
         else:
             self.scheduler = self.scheduler_dict[self.sel_scheduler](self.optimizer,
                                                                       **self.scheduler_cfgs)
@@ -186,11 +188,10 @@ class Train:
                     self.optimizer.zero_grad()
                     p = self.model(inp)
                     # remove overlap class
-                    gt_oh = OneHot(gt, self.num_classes - 1)
-                    dice = DiceWin(F.softmax(p, 1), gt_oh)
-                    gt[gt == self.num_classes - 1] = 0
-                    ce = F.cross_entropy(p, gt.squeeze(1))
-                    loss = self.loss_weights[0]/epoch*ce + self.loss_weights[1]*dice
+                    # valid mask?
+                    ce = F.cross_entropy(p, gt.squeeze(1), reduction="none")*
+                    dice = DiceMax(F.softmax(p, 1), gt)
+                    loss = self.lw[0]*self.lw_decay[0]**(epoch-1)*ce + self.lw[1]*self.lw_decay[1]**(epoch-1)*dice
                     loss.backward()
                     dice_scores.append(1. - dice.detach().cpu().item())
                     ce_scores.append(ce.detach().cpu().item())
@@ -214,7 +215,7 @@ class Train:
                         block += 1
 
             # Validation loop;  every epoch
-            if self.sel_scheduler != "cyclic":
+            if (self.sel_scheduler != "cyclic") and (self.sel_scheduler != None):
                 self.scheduler.step()
             samples = []
             bboxes = []
@@ -226,9 +227,9 @@ class Train:
                     samples.append(vpat_id.detach().item())
                     bboxes.append(vbbox.detach().tolist())
                     pv = self.model(vi)
-                    dice_scores.append(1. - DiceMax(F.softmax(pv, 1),
-                                                             OneHot(vt, self.num_classes - 1)).detach().item())
                     vt[vt == self.num_classes - 1] = 0
+                    dice_scores.append(1. - DiceWin(F.softmax(pv, 1),
+                                                             OneHot(vt, self.num_classes - 1)).detach().item())
                     ce_scores.append(F.cross_entropy(pv, vt.squeeze(1)).detach().item())
             eval_writer.writerow([epoch, samples, bboxes, ce_scores, dice_scores])
             if gpu_id == 0:

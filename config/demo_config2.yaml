@@ -4,10 +4,10 @@ paths: {
     metadata_src: "/home/dataset/TotalSegmentor/meta.csv",
     labels_src: "/home/isaiah/TotalSegmentatorProj/metadata/classes.json",
     model_load_src: null,
-    model_ckpts_dest: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_ckpt_01.pth",
-    model_best_dest: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_best_01.pth",
-    train_report_path: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_train_reps_01",
-    eval_report_path: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_eval_reps_01",
+    model_ckpts_dest: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_ckpt_02.pth",
+    model_best_dest: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_best_02.pth",
+    train_report_path: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_train_reps_02",
+    eval_report_path: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_eval_reps_02",
 }
 
 preprocess_params: {
@@ -44,15 +44,15 @@ validation_dataset_params: {
 }
 
 optimizer_params: {
-    lr: 1.0e-2,
+    lr: 0.1,
     weight_decay: 1.0e-3,
 }
 
 scheduler_params: {
-    base_lr: 1.0e-5,
-    max_lr: 0.115,
-    step_size_up: 60,
-    mode: "exp_range",
+    base_lr: 1.0e-2,
+    max_lr: 1.0e-5,
+    step_size_up: 40,
+    mode: "triangular",
     gamma: 0.998,
     cycle_momentum: False,
 }
@@ -65,8 +65,8 @@ model_params: {
 run_params: {
     model: "nnunet",
     train: True,
-    optimizer: "sgd",
-    scheduler: "cyclic",
+    optimizer: "adamw",
+    scheduler: null,
     metric: "dice",
     disable_cuda: False,
     epochs: 1000,

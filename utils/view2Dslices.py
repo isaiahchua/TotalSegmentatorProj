@@ -51,7 +51,7 @@ def PlotXYZSlices(ct_im, title, bbox="NA", seg_im=[], view_indices=None, label_d
     x_idx, y_idx, z_idx = view_indices
     x_slice, y_slice, z_slice = RandXYZSlices(ct_im, view_indices, cutoff_intensity=None)
     fig, axs = plt.subplots(1, 3, figsize=(12, 5))
-    fig.suptitle(f"{title}, location: {bbox}, patch_shape: {ct_im.shape[::-1]}")
+    fig.suptitle(f"{title.item()}, location: {bbox}, patch_shape: {ct_im.shape[::-1]}")
     axs[0].set_title(f"Sagital view (x={str(x_idx)})")
     axs[0].set_xlabel("y")
     axs[0].set_ylabel("z")
