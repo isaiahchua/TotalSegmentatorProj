@@ -4,10 +4,10 @@ paths: {
     metadata_src: "/home/dataset/TotalSegmentor/meta.csv",
     labels_src: "/home/isaiah/TotalSegmentatorProj/metadata/classes.json",
     model_load_src: null,
-    model_ckpts_dest: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_ckpt_01.pth",
-    model_best_dest: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_best_01.pth",
-    train_report_path: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_train_reps_01",
-    eval_report_path: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_eval_reps_01",
+    model_ckpts_dest: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_ckpt_04.pth",
+    model_best_dest: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_best_04.pth",
+    train_report_path: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_train_reps_04",
+    eval_report_path: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_eval_reps_04",
 }
 
 preprocess_params: {
@@ -65,16 +65,16 @@ model_params: {
 run_params: {
     model: "nnunet",
     train: True,
-    optimizer: "sgd",
-    scheduler: "cyclic",
+    optimizer: "adamw",
+    scheduler: null,
     metric: "dice",
     disable_cuda: False,
     epochs: 1000,
     batch_size: 1,
     validation_size: 1,
     tracking_frequency: 1,
-    loss_weights: [1., 10.],
-    loss_weights_decay: [0.95, 1.],
+    loss_weights: [1., 30.],
+    loss_weights_decay: [0.90, 1.],
     label_weights: [0.75, 0.14, 0.07, 0.04],
     num_classes: 106,
 }

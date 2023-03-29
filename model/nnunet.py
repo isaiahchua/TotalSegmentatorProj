@@ -10,13 +10,14 @@ class InConv(nn.Module):
         super().__init__()
         self.conv1 = nn.Conv3d(in_chn, out_chn, 2, 2)
         self.conv2 = nn.Conv3d(out_chn, out_chn, 3, 1, 1)
-        self.norm = nn.InstanceNorm3d(out_chn, affine=True)
+        self.norm1 = nn.InstanceNorm3d(out_chn, affine=True)
+        self.norm2 = nn.InstanceNorm3d(out_chn, affine=True)
         self.lrelu = nn.LeakyReLU()
 
     @PrintShapeDecorator(DEBUG)
     def forward(self, inp):
-        out = self.lrelu(self.norm(self.conv1(inp)))
-        out = self.lrelu(self.norm(self.conv2(out)))
+        out = self.lrelu(self.norm1(self.conv1(inp)))
+        out = self.lrelu(self.norm2(self.conv2(out)))
         return out
 
 class DownsampleBlock(nn.Module):
@@ -41,13 +42,14 @@ class Bottleneck(nn.Module):
         super().__init__()
         self.conv1 = nn.Conv3d(chn, chn, 2, 2)
         self.conv2 = nn.Conv3d(chn, chn, 3, 1, 1)
-        self.norm = nn.InstanceNorm3d(chn, affine=True)
+        self.norm1 = nn.InstanceNorm3d(chn, affine=True)
+        self.norm2 = nn.InstanceNorm3d(chn, affine=True)
         self.lrelu = nn.LeakyReLU()
 
     @PrintShapeDecorator(DEBUG)
     def forward(self, inp):
-        out = self.lrelu(self.norm(self.conv1(inp)))
-        out = self.lrelu(self.norm(self.conv2(out)))
+        out = self.lrelu(self.norm1(self.conv1(inp)))
+        out = self.lrelu(self.norm2(self.conv2(out)))
         return out
 
 class UpsampleBlock(nn.Module):
@@ -58,28 +60,35 @@ class UpsampleBlock(nn.Module):
         self.conv1 = nn.Conv3d(2*in_chn, in_chn, 3, 1, 1)
         self.conv2 = nn.Conv3d(in_chn, out_chn, 3, 1, 1)
         self.norm1 = nn.InstanceNorm3d(in_chn, affine=True)
-        self.norm2 = nn.InstanceNorm3d(out_chn, affine=True)
+        self.norm2 = nn.InstanceNorm3d(in_chn, affine=True)
+        self.norm3 = nn.InstanceNorm3d(out_chn, affine=True)
         self.lrelu = nn.LeakyReLU()
 
     @PrintShapeDecorator(DEBUG)
     def forward(self, inp, skip_features):
         out = self.lrelu(self.norm1(self.deconv(inp)))
-        out = self.lrelu(self.norm1(self.conv1(torch.cat([out, skip_features], 1))))
-        out = self.lrelu(self.norm2(self.conv2(out)))
+        out = self.lrelu(self.norm2(self.conv1(torch.cat([out, skip_features], 1))))
+        out = self.lrelu(self.norm3(self.conv2(out)))
         return out
 
 class OutConv(nn.Module):
 
     def __init__(self, in_chn, num_classes):
         super().__init__()
-        self.deconv = nn.ConvTranspose3d(in_chn, in_chn, 2, 2)
-        self.norm = nn.InstanceNorm3d(in_chn, affine=True)
+        self.deconv1 = nn.ConvTranspose3d(in_chn, in_chn, 2, 2)
+        self.conv1 = nn.Conv3d(2*in_chn, 2*in_chn, 3, 1, 1)
+        self.deconv2 = nn.ConvTranspose3d(2*in_chn, 2*in_chn, 2, 2)
+        self.norm1 = nn.InstanceNorm3d(in_chn, affine=True)
+        self.norm2 = nn.InstanceNorm3d(2*in_chn, affine=True)
+        self.norm3 = nn.InstanceNorm3d(2*in_chn, affine=True)
+        self.outconv = nn.Conv3d(2*in_chn, num_classes, 1, 1)
         self.lrelu = nn.LeakyReLU()
-        self.outconv = nn.Conv3d(in_chn, num_classes, 1, 1)
 
     @PrintShapeDecorator(DEBUG)
-    def forward(self, inp):
-        out = self.lrelu(self.norm(self.deconv(inp)))
+    def forward(self, inp, skip_features):
+        out = self.lrelu(self.norm1(self.deconv1(inp)))
+        out = self.lrelu(self.norm2(self.conv1(torch.cat([out, skip_features], 1))))
+        out = self.lrelu(self.norm3(self.deconv2(out)))
         out = self.outconv(out)
         return out
 
@@ -102,8 +111,7 @@ class nnUnet(nn.Module):
         self.up2 = UpsampleBlock(self.chn[4], self.chn[3])
         self.up3 = UpsampleBlock(self.chn[3], self.chn[2])
         self.up4 = UpsampleBlock(self.chn[2], self.chn[1])
-        self.up5 = UpsampleBlock(self.chn[1], self.chn[0])
-        self.outlayer = OutConv(self.chn[0], self.num_classes)
+        self.outlayer = OutConv(self.chn[1], self.num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
@@ -126,8 +134,7 @@ class nnUnet(nn.Module):
         out = self.up2(out, e4)
         out = self.up3(out, e3)
         out = self.up4(out, e2)
-        out = self.up5(out, e1)
-        out = self.outlayer(out)
+        out = self.outlayer(out, e1)
         return out
 
 

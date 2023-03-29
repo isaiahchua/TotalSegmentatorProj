@@ -158,10 +158,11 @@ class Train:
             self.val_sampler = DistributedSampler(self.val_data, shuffle=True)
             self.trainloader = DataLoader(self.train_data, self.batch_size, sampler=self.train_sampler)
             self.validloader = DataLoader(self.val_data, self.val_size, sampler=self.val_sampler)
+            self.total_val_size = len(self.val_sampler)
         else:
             self.trainloader = DataLoader(self.train_data, self.batch_size, shuffle=True)
             self.validloader = DataLoader(self.val_data, self.val_size, shuffle=True)
-        self.total_val_size = len(self.val_sampler)
+            self.total_val_size = len(self.validloader)
 
     def _SetupModelAndOptim(self, mode, gpu_id, device):
         model = self.model_dict[self.model_name](**self.model_cfgs).to(device)
@@ -206,7 +207,7 @@ class Train:
         ce_scores = []
         losses = []
         for epoch in range(1, self.epochs + 1):
-            if mode == "DDP"
+            if mode == "DDP":
                 self.train_sampler.set_epoch(epoch)
                 self.val_sampler.set_epoch(epoch)
             if self.train:
@@ -218,9 +219,11 @@ class Train:
                     self.optimizer.zero_grad()
                     p = self.model(inp)
                     # remove overlap class
-                    # valid mask?
-                    ce = F.cross_entropy(p, gt.squeeze(1), reduction="none")*
-                    dice = DiceMax(F.softmax(p, 1), gt, self.num_classes, 105)
+                    mask=~torch.eq(gt, 105)
+                    gt[gt == 105] = 0
+                    gt_oh = OneHot(gt, self.num_classes - 1)
+                    ce = F.cross_entropy(p, gt.squeeze(1))
+                    dice = DiceMax(F.softmax(p, 1), gt_oh, mask)
                     loss = self.lw[0]*self.lw_decay[0]**(epoch-1)*ce + self.lw[1]*self.lw_decay[1]**(epoch-1)*dice
                     loss.backward()
                     dice_scores.append(1. - dice.detach().cpu().item())
@@ -261,10 +264,14 @@ class Train:
                     samples.append(vpat_id.detach().item())
                     bboxes.append(vbbox.detach().tolist())
                     pv = self.model(vi)
+                    mask=~torch.eq(gt, 105)
+                    gt[gt == 105] = 0
+                    gt_oh = OneHot(gt, self.num_classes - 1)
+                    ce = F.cross_entropy(p, gt.squeeze(1))
+                    dice = DiceMax(F.softmax(p, 1), gt_oh, mask)
                     vt[vt == self.num_classes - 1] = 0
-                    dice_scores.append(1. - DiceWin(F.softmax(pv, 1),
-                                                             OneHot(vt, self.num_classes - 1)).detach().item())
-                    ce_scores.append(F.cross_entropy(pv, vt.squeeze(1)).detach().item())
+                    dice_scores.append(1. - dice.detach().item())
+                    ce_scores.append(ce.detach().item())
             eval_writer.writerow([epoch, samples, bboxes, ce_scores, dice_scores])
             if mode != "DDP":
                 sco = np.asarray(dice_scores).mean()

@@ -128,12 +128,10 @@ def DiceWin(inp, gt_oh, smooth=1.):
     dims = list(range(2, len(inp.shape)))
     return 1. - torch.mean((2 * torch.sum(inp * gt_oh, dims) + smooth) / (torch.sum(inp, dims) + torch.sum(gt_oh, dims) + smooth))
 
-def DiceMax(inp, gt, num_classes, ignore_class, smooth=1.):
+def DiceMax(inp, gt_oh, mask, smooth=1.):
     """
     Max's dice
+    mask: Is a boolean tensor indicating which pixels to analyze and which to ignore
     """
     dims = list(range(2, len(inp.shape)))
-    valid=~torch.eq(gt,ignore_class)
-    gt[gt == ignore_class] = 0
-    gt_oh = OneHot(gt, num_classes - 1)
-    return 1. - torch.mean((2 * torch.sum(inp*gt_oh*valid, dims)+smooth)/(torch.sum(inp*valid, dims)+torch.sum(gt_oh*valid, dims)+smooth))
+    return 1. - torch.mean((2 * torch.sum(inp*gt_oh*mask, dims)+smooth)/(torch.sum(inp*mask, dims)+torch.sum(gt_oh*mask, dims)+smooth))
