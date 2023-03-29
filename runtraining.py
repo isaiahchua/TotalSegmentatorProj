@@ -33,7 +33,7 @@ def main(cfile):
     cfgs = Dict(yaml.load(open(abspath(cfile), "r"), Loader=yaml.Loader))
     SaveConfigFile(cfile, cfgs.paths)
     train = Train(cfgs)
-    train.RunDDP()
+    train.Run()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
