@@ -3,11 +3,11 @@ paths: {
     data_dest: "/home/isaiah/TotalSegmentator/demo3/",
     metadata_src: "/home/dataset/TotalSegmentor/meta.csv",
     labels_src: "/home/isaiah/TotalSegmentatorProj/metadata/classes.json",
-    model_load_src: null,
-    model_ckpts_dest: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_ckpt_04.pth",
-    model_best_dest: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_best_04.pth",
-    train_report_path: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_train_reps_04",
-    eval_report_path: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_eval_reps_04",
+    model_load_src: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_ckpt_06.pth",
+    model_ckpts_dest: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_ckpt_07.pth",
+    model_best_dest: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_best_07.pth",
+    train_report_path: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_train_reps_07",
+    eval_report_path: "/home/isaiah/TotalSegmentator/results/20230329/demo_nnunet_eval_reps_07",
 }
 
 preprocess_params: {
@@ -64,12 +64,13 @@ model_params: {
 
 run_params: {
     model: "nnunet",
+    mode: "DDP",
     train: True,
     optimizer: "adamw",
     scheduler: null,
     metric: "dice",
     disable_cuda: False,
-    epochs: 1000,
+    epochs: 100,
     batch_size: 1,
     validation_size: 1,
     tracking_frequency: 1,

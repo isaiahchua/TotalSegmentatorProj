@@ -53,7 +53,7 @@ class Train:
         self.train_data_path = join(self.data_path, "train")
         self.val_data_path = join(self.data_path, "val")
 
-
+        self.mode = self.train_cfgs.mode
         self.train = self.train_cfgs.train
         self.epochs = self.train_cfgs.epochs
         self.batch_size = self.train_cfgs.batch_size
@@ -68,6 +68,7 @@ class Train:
         self.lw = self.train_cfgs.loss_weights
         self.lw_decay = self.train_cfgs.loss_weights_decay
         self.num_classes = self.train_cfgs.num_classes
+        self.se = self.train_cfgs.starting_epoch
 
         self.model_dict = defaultdict(self._NoModelError, {
             "nnunet": nnUnet,
@@ -136,10 +137,16 @@ class Train:
         return
 
     def _SetupLogs(self, gpu_id):
-        self._RemoveDir(self.train_report_path)
-        self._RemoveDir(self.eval_report_path)
-        os.makedirs(self.train_report_path)
-        os.makedirs(self.eval_report_path)
+        if self.mode != "DDP":
+            self._RemoveDir(self.train_report_path)
+            self._RemoveDir(self.eval_report_path)
+            os.makedirs(self.train_report_path)
+            os.makedirs(self.eval_report_path)
+        elif gpu_id == 0:
+            self._RemoveDir(self.train_report_path)
+            self._RemoveDir(self.eval_report_path)
+            os.makedirs(self.train_report_path)
+            os.makedirs(self.eval_report_path)
         train_log = open(join(self.train_report_path, f"rank{gpu_id}.csv"), "a")
         eval_log = open(join(self.eval_report_path, f"rank{gpu_id}.csv"), "a")
         train_writer = csv.writer(train_log)
@@ -150,10 +157,10 @@ class Train:
                               "cross_entropy_scores", "dice_scores"])
         return train_log, eval_log, train_writer, eval_writer
 
-    def _SetupData(self, mode, device):
+    def _SetupData(self, device):
         self.train_data = TotalSegmentatorData(device, self.train_data_path, self.train_data_cfgs)
         self.val_data = TotalSegmentatorData(device, self.val_data_path, self.eval_data_cfgs)
-        if mode == "DDP":
+        if self.mode == "DDP":
             self.train_sampler = DistributedSampler(self.train_data, shuffle=True)
             self.val_sampler = DistributedSampler(self.val_data, shuffle=True)
             self.trainloader = DataLoader(self.train_data, self.batch_size, sampler=self.train_sampler)
@@ -164,7 +171,7 @@ class Train:
             self.validloader = DataLoader(self.val_data, self.val_size, shuffle=True)
             self.total_val_size = len(self.validloader)
 
-    def _SetupModelAndOptim(self, mode, gpu_id, device):
+    def _SetupModelAndOptim(self, gpu_id, device):
         model = self.model_dict[self.model_name](**self.model_cfgs).to(device)
         if self.prev_model != None:
             self.prev_model = torch.load(self.prev_model, map_location=device)
@@ -175,7 +182,7 @@ class Train:
         else:
             model_state = None
             optimizer_state = None
-        if mode == "DDP":
+        if self.mode == "DDP":
             self.model = DDP(model, device_ids=[gpu_id])
         else:
             self.model = model
@@ -199,7 +206,7 @@ class Train:
             for _ in range(self.scheduler_cfgs.step_size_up):
                 self.scheduler.step()
 
-    def _TrainLoop(self, mode, gpu_id, train_log, eval_log, train_writer, eval_writer):
+    def _TrainLoop(self, gpu_id, train_log, eval_log, train_writer, eval_writer):
         best_score = 0.
         sco = 0.
         block = 1
@@ -207,7 +214,7 @@ class Train:
         ce_scores = []
         losses = []
         for epoch in range(1, self.epochs + 1):
-            if mode == "DDP":
+            if self.mode == "DDP":
                 self.train_sampler.set_epoch(epoch)
                 self.val_sampler.set_epoch(epoch)
             if self.train:
@@ -224,7 +231,7 @@ class Train:
                     gt_oh = OneHot(gt, self.num_classes - 1)
                     ce = F.cross_entropy(p, gt.squeeze(1))
                     dice = DiceMax(F.softmax(p, 1), gt_oh, mask)
-                    loss = self.lw[0]*self.lw_decay[0]**(epoch-1)*ce + self.lw[1]*self.lw_decay[1]**(epoch-1)*dice
+                    loss = self.lw[0]*self.lw_decay[0]**(epoch+self.se-1)*ce + self.lw[1]*self.lw_decay[1]**(epoch+self.se-1)*dice
                     loss.backward()
                     dice_scores.append(1. - dice.detach().cpu().item())
                     ce_scores.append(ce.detach().cpu().item())
@@ -238,7 +245,7 @@ class Train:
                         block_ce = np.asarray(ce_scores).mean()
                         train_writer.writerow([epoch, block, last_lr, block_loss,
                                                block_ce, block_dice])
-                        if mode != "DDP":
+                        if self.mode != "DDP":
                             print((f"epoch {epoch}/{self.epochs} | block: {block}, block_size: {self.block_size} | "
                                    f"loss: {block_loss:.5f}, cross_entropy: {block_ce}, block_dice: {block_dice:.3f}, "
                                    f"{self.met_name}: {sco:.3f}, best: {best_score:.3f}"))
@@ -273,7 +280,7 @@ class Train:
                     dice_scores.append(1. - dice.detach().item())
                     ce_scores.append(ce.detach().item())
             eval_writer.writerow([epoch, samples, bboxes, ce_scores, dice_scores])
-            if mode != "DDP":
+            if self.mode != "DDP":
                 sco = np.asarray(dice_scores).mean()
                 state = {
                     "model": self.model.state_dict(),
@@ -296,27 +303,26 @@ class Train:
         train_log.close()
         eval_log.close()
 
-    def _TrainModel(self, gpu_id, mode=""):
-        if mode == "DDP":
+    def _TrainModel(self, gpu_id):
+        if self.mode == "DDP":
             self._SetupDDP(gpu_id, self.no_gpus)
         train_log, eval_log, train_writer, eval_writer = self._SetupLogs(gpu_id)
         device = torch.device("cuda", gpu_id)
         torch.cuda.set_device(device)
-        self._SetupData(mode, device)
-        self._SetupModelAndOptim(mode, gpu_id, device)
+        self._SetupData(device)
+        self._SetupModelAndOptim(gpu_id, device)
         self._SetupScheduler()
-        self._TrainLoop(mode, gpu_id, train_log, eval_log, train_writer, eval_writer)
-        if mode == "DDP":
+        self._TrainLoop(gpu_id, train_log, eval_log, train_writer, eval_writer)
+        if self.mode == "DDP":
             self._ShutdownDDP()
         return
 
     @TimeFuncDecorator(True)
     def Run(self, gpu_id=0):
-        self._TrainModel(gpu_id)
-
-    @TimeFuncDecorator(True)
-    def RunDDP(self):
-        mp.spawn(self._TrainModel, args=("DDP"), nprocs=self.no_gpus)
+        if self.mode == "DDP":
+            mp.spawn(self._TrainModel, nprocs=self.no_gpus)
+        else:
+            self._TrainModel(gpu_id)
 
     @TimeFuncDecorator(True)
     def LoopDataset(self):

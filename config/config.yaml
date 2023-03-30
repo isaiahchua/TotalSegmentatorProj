@@ -2,11 +2,12 @@ paths: {
     data_src: "/home/dataset/TotalSegmentor/Totalsegmentator_dataset/",
     data_dest: "/home/isaiah/TotalSegmentator/preprocessed2/",
     metadata_src: "/home/dataset/TotalSegmentor/meta.csv",
-    model_load_src: "/home/isaiah/TotalSegmentator/results/20230324/nnunet_ckpt_02.pth",
-    model_ckpts_dest: "/home/isaiah/TotalSegmentator/results/20230327/nnunet_ckpt_01.pth",
-    model_best_dest: "/home/isaiah/TotalSegmentator/results/20230327/nnunet_best_01.pth",
-    train_report_path: "/home/isaiah/TotalSegmentator/results/20230327/nnunet_train_reps_01",
-    eval_report_path: "/home/isaiah/TotalSegmentator/results/20230327/nnunet_eval_reps_01",
+    labels_src: "/home/isaiah/TotalSegmentatorProj/metadata/classes.json",
+    model_load_src: "/home/isaiah/TotalSegmentator/results/20230329/nnunet_ckpt_01.pth",
+    model_ckpts_dest: "/home/isaiah/TotalSegmentator/results/20230330/nnunet_ckpt_01.pth",
+    model_best_dest: "/home/isaiah/TotalSegmentator/results/20230330/nnunet_best_01.pth",
+    train_report_path: "/home/isaiah/TotalSegmentator/results/20230330/nnunet_train_reps_01",
+    eval_report_path: "/home/isaiah/TotalSegmentator/results/20230330/nnunet_eval_reps_01",
 }
 
 preprocess_params: {
@@ -19,7 +20,7 @@ preprocess_params: {
 }
 
 train_dataset_params: {
-    augmentations: ["rand_crop", "affine", "deformation", "gamma", "pad_to_size"],
+    augmentations: ["affine", "rand_crop", "deformation", "gamma", "pad_to_size"],
     scaling_factors: 0.1,
     rotation_angles: 10.,
     gamma_range: [-0.3, 0.3],
@@ -31,7 +32,7 @@ train_dataset_params: {
 }
 
 validation_dataset_params: {
-    augmentations: ["center_crop", "affine", "deformation", "gamma", "pad_to_size"],
+    augmentations: ["affine", "center_crop", "deformation", "gamma", "pad_to_size"],
     scaling_factors: 0.1,
     rotation_angles: 10.,
     gamma_range: [-0.3, 0.3],
@@ -43,8 +44,8 @@ validation_dataset_params: {
 }
 
 optimizer_params: {
-    lr: 0.1,
-    weight_decay: 1.0e-4,
+    lr: 0.01,
+    weight_decay: 1.0e-3,
 }
 
 scheduler_params: {
@@ -62,16 +63,19 @@ model_params: {
 
 run_params: {
     model: "nnunet",
+    mode: "DDP",
     train: True,
     optimizer: "adamw",
-    scheduler: "cyclic",
+    scheduler: null,
     metric: "dice",
     disable_cuda: False,
-    epochs: 10,
+    epochs: 20,
     batch_size: 1,
     validation_size: 1,
     tracking_frequency: 1,
-    loss_weights: [0.5, 0.5],
+    loss_weights: [1., 10.],
+    loss_weights_decay: [0.90, 1.],
+    starting_epoch: 20,
     label_weights: [0.75, 0.14, 0.07, 0.04],
     num_classes: 106,
 }
