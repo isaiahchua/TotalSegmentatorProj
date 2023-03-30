@@ -42,8 +42,11 @@ class TotalSegmentatorData(Dataset):
                 "pad_to_size": tio.EnsureShapeMultiple(self.shrink_f, method="pad"),
             }
         )
-        self.aug_list = [self.aug_map[key] for key in self.aug]
-        self.augment = tio.Compose(self.aug_list)
+        if self.aug != None:
+            self.aug_list = [self.aug_map[key] for key in self.aug]
+            self.augment = tio.Compose(self.aug_list)
+        else:
+            self.augment = None
 
         # self.metadata_path = abspath(metadata_path)
         # self.metadata = None
@@ -67,12 +70,13 @@ class TotalSegmentatorData(Dataset):
                 "seg": tio.LabelMap(tensor=np.expand_dims(gt, 0)),
                 "location": torch.tensor((0, 0, 0, *im.shape), dtype=torch.int64),
                 })
-        pat_aug = self.augment(pat)
+        if self.augment != None:
+            pat = self.augment(pat)
         output =(
             pat_name,
-            pat_aug.location.data.to(self.device),
-            pat_aug.image.data.to(self.device),
-            pat_aug.seg.data.to(dtype=torch.int64, device=self.device),
+            pat.location.data,
+            pat.image.data,
+            pat.seg.data,
         )
         return output
 

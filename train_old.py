@@ -207,6 +207,7 @@ class Train:
                 self.scheduler.step()
 
     def _TrainLoop(self, gpu_id, train_log, eval_log, train_writer, eval_writer):
+        device = torch.device("cuda", gpu_id)
         best_score = 0.
         sco = 0.
         block = 1
@@ -217,13 +218,15 @@ class Train:
             if self.mode == "DDP":
                 self.train_sampler.set_epoch(epoch)
                 self.val_sampler.set_epoch(epoch)
-            if self.train:
 
-                # Training loop
+            # Training loop
+            if self.train:
                 self.model.train()
                 for batch, (pat_id, bbox, inp, gt) in enumerate(self.trainloader):
                     last_lr = self.scheduler.get_last_lr()[0]
                     self.optimizer.zero_grad()
+                    inp = inp.to(device)
+                    gt = gt.to(dtype=torch.int64, device)
                     p = self.model(inp)
                     # remove overlap class
                     mask=~torch.eq(gt, 105)
@@ -270,6 +273,8 @@ class Train:
                 for vbatch, (vpat_id, vbbox, vi, vt) in enumerate(self.validloader):
                     samples.append(vpat_id.detach().item())
                     bboxes.append(vbbox.detach().tolist())
+                    vi = vi.to(device)
+                    vt = vt.to(dtype=torch.int64, device)
                     pv = self.model(vi)
                     mask=~torch.eq(gt, 105)
                     gt[gt == 105] = 0

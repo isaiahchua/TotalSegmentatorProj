@@ -135,3 +135,8 @@ def DiceMax(inp, gt_oh, mask, smooth=1.):
     """
     dims = list(range(2, len(inp.shape)))
     return 1. - torch.mean((2 * torch.sum(inp*gt_oh*mask, dims)+smooth)/(torch.sum(inp*mask, dims)+torch.sum(gt_oh*mask, dims)+smooth))
+
+def DiceScore(inp, gt_oh, mask, smooth=1.):
+    dims = list(range(2, len(inp.shape)))
+    return (2 * torch.sum(inp*gt_oh*mask, dims) + smooth) / (torch.sum(inp*mask, dims) + torch.sum(gt_oh*mask, dims) + smooth)
+
