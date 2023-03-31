@@ -6,3 +6,4 @@ from .fileloaders import LoadNpz, LoadNpz2
 from .encoding import OneHot
 from .torchiocustom import *
 from .plottinghelpers import *
+from .patchgenerator import *
