@@ -226,25 +226,25 @@ class Train:
                     last_lr = self.scheduler.get_last_lr()[0]
                     self.optimizer.zero_grad()
                     inp = inp.to(device)
-                    gt = gt.to(dtype=torch.int64, device)
+                    gt = gt.to(dtype=torch.int64, device=device)
                     p = self.model(inp)
                     # remove overlap class
                     mask=~torch.eq(gt, 105)
                     gt[gt == 105] = 0
                     gt_oh = OneHot(gt, self.num_classes - 1)
-                    ce = F.cross_entropy(p, gt.squeeze(1))
+                    ce = F.cross_entropy(p, gt.squeeze(1), reduction="none")
                     dice = DiceMax(F.softmax(p, 1), gt_oh, mask)
-                    loss = self.lw[0]*self.lw_decay[0]**(epoch+self.se-1)*ce + self.lw[1]*self.lw_decay[1]**(epoch+self.se-1)*dice
+                    loss = self.lw[0]*self.lw_decay[0]**(epoch+self.se-1)*ce.mean() + self.lw[1]*self.lw_decay[1]**(epoch+self.se-1)*dice.mean()
                     loss.backward()
-                    dice_scores.append(1. - dice.detach().cpu().item())
-                    ce_scores.append(ce.detach().cpu().item())
+                    dice_scores.append(1. - dice.detach().cpu().tolist())
+                    ce_scores.append(ce.detach().cpu().tolist())
                     losses.append(loss.detach().cpu().item())
                     self.optimizer.step()
                     if self.sel_scheduler == "cyclic":
                         self.scheduler.step()
                     if (batch + 1) % self.track_freq == 0:
-                        block_loss = np.asarray(losses).mean()
-                        block_dice = np.asarray(dice_scores).mean()
+                        block_loss = np.asarray(losses).flatten().mean()
+                        block_dice = np.asarray(dice_scores).flatten().mean()
                         block_ce = np.asarray(ce_scores).mean()
                         train_writer.writerow([epoch, block, last_lr, block_loss,
                                                block_ce, block_dice])
@@ -274,19 +274,19 @@ class Train:
                     samples.append(vpat_id.detach().item())
                     bboxes.append(vbbox.detach().tolist())
                     vi = vi.to(device)
-                    vt = vt.to(dtype=torch.int64, device)
+                    vt = vt.to(dtype=torch.int64, device=device)
                     pv = self.model(vi)
-                    mask=~torch.eq(gt, 105)
-                    gt[gt == 105] = 0
-                    gt_oh = OneHot(gt, self.num_classes - 1)
-                    ce = F.cross_entropy(p, gt.squeeze(1))
-                    dice = DiceMax(F.softmax(p, 1), gt_oh, mask)
+                    mask=~torch.eq(vt, 105)
+                    vt[vt == 105] = 0
+                    vt_oh = OneHot(vt, self.num_classes - 1)
+                    ce = F.cross_entropy(pv, gt.squeeze(1))
+                    dice = DiceMax(F.softmax(pv, 1), vt_oh, mask)
                     vt[vt == self.num_classes - 1] = 0
-                    dice_scores.append(1. - dice.detach().item())
-                    ce_scores.append(ce.detach().item())
+                    dice_scores.append(1. - dice.detach().tolist())
+                    ce_scores.append(ce.detach().tolist())
             eval_writer.writerow([epoch, samples, bboxes, ce_scores, dice_scores])
             if self.mode != "DDP":
-                sco = np.asarray(dice_scores).mean()
+                sco = np.asarray(dice_scores).flatten().mean()
                 state = {
                     "model": self.model.state_dict(),
                     "optimizer": self.optimizer.state_dict()
@@ -296,7 +296,7 @@ class Train:
                     best_score = sco
                     self._SaveBestModel(state, best_score)
             elif gpu_id == 0:
-                sco = np.asarray(dice_scores).mean()
+                sco = np.asarray(dice_scores).flatten().mean()
                 state = {
                     "model": self.model.module.state_dict(),
                     "optimizer": self.optimizer.state_dict()
@@ -305,6 +305,10 @@ class Train:
                 if sco > best_score:
                     best_score = sco
                     self._SaveBestModel(state, best_score)
+            samples = []
+            bboxes = []
+            dice_scores = []
+            ce_scores = []
         train_log.close()
         eval_log.close()
 
