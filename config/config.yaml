@@ -3,11 +3,11 @@ paths: {
     data_dest: "/home/isaiah/TotalSegmentator/preprocessed2/",
     metadata_src: "/home/dataset/TotalSegmentor/meta.csv",
     labels_src: "/home/isaiah/TotalSegmentatorProj/metadata/classes.json",
-    model_load_src: "/home/isaiah/TotalSegmentator/results/20230329/nnunet_ckpt_01.pth",
-    model_ckpts_dest: "/home/isaiah/TotalSegmentator/results/20230330/nnunet_ckpt_01.pth",
-    model_best_dest: "/home/isaiah/TotalSegmentator/results/20230330/nnunet_best_01.pth",
-    train_report_path: "/home/isaiah/TotalSegmentator/results/20230330/nnunet_train_reps_01",
-    eval_report_path: "/home/isaiah/TotalSegmentator/results/20230330/nnunet_eval_reps_01",
+    model_load_src: null,
+    model_ckpts_dest: "/home/isaiah/TotalSegmentator/results/20230331/nnunet_ckpt_01.pth",
+    model_best_dest: "/home/isaiah/TotalSegmentator/results/20230331/nnunet_best_01.pth",
+    train_report_path: "/home/isaiah/TotalSegmentator/results/20230331/nnunet_train_reps_01",
+    eval_report_path: "/home/isaiah/TotalSegmentator/results/20230331/nnunet_eval_reps_01",
 }
 
 preprocess_params: {
@@ -20,7 +20,7 @@ preprocess_params: {
 }
 
 train_dataset_params: {
-    augmentations: ["affine", "rand_crop", "deformation", "gamma", "pad_to_size"],
+    augmentations: ["affine", "rand_crop", "noise", "gamma", "pad_to_size"],
     scaling_factors: 0.1,
     rotation_angles: 10.,
     gamma_range: [-0.3, 0.3],
@@ -32,7 +32,19 @@ train_dataset_params: {
 }
 
 validation_dataset_params: {
-    augmentations: ["affine", "center_crop", "deformation", "gamma", "pad_to_size"],
+    augmentations: ["affine", "center_crop", "noise", "gamma", "pad_to_size"],
+    scaling_factors: 0.1,
+    rotation_angles: 10.,
+    gamma_range: [-0.3, 0.3],
+    model_shrinking_factor: 128,
+    num_control_points: 7,
+    max_displacement: 3.,
+    labels: [],
+    file_extension: "npz",
+}
+
+test_dataset_params: {
+    augmentations: null,
     scaling_factors: 0.1,
     rotation_angles: 10.,
     gamma_range: [-0.3, 0.3],
@@ -75,7 +87,7 @@ run_params: {
     tracking_frequency: 1,
     loss_weights: [1., 10.],
     loss_weights_decay: [0.90, 1.],
-    starting_epoch: 20,
+    starting_epoch: 0,
     label_weights: [0.75, 0.14, 0.07, 0.04],
     num_classes: 106,
 }
